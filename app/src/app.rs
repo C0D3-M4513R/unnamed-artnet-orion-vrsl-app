@@ -136,7 +136,7 @@ impl<'a> eframe::App for App<'a> {
         TopBottomPanel::top("menu_bar:menu").show(ctx, |ui|{
            egui::menu::bar(ui, |ui|{
                egui::menu::menu_button(ui, "File", |ui|{
-
+                   //todo: add functionality
                });
                egui::menu::menu_button(ui, "Modes", |ui|{
                    for e in [AppMode::FixtureBuilder, AppMode::Fixtures, AppMode::Channels, AppMode::Functions] {

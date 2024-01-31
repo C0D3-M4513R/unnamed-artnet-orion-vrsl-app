@@ -1,8 +1,6 @@
-use std::iter::{Repeat, Take};
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
-use artnet_protocol::PortAddress;
 use serde_derive::{Deserialize, Serialize};
 use crate::artnet::fixture::Device;
 
@@ -88,7 +86,7 @@ impl Universe{
         let end_channel = end_channel as u16;
         self.devices.sort_unstable_by_key(|device|device.start_id);
         match self.devices.binary_search_by_key(&device.start_id, |other_dev|other_dev.start_id){
-            Ok(v) => Err(UniverseInsertError::ChannelAlreadyAssigned),
+            Ok(_) => Err(UniverseInsertError::ChannelAlreadyAssigned),
             Err(v) => {
                 //is there a previous element?
                 if v > 0{

@@ -1,6 +1,6 @@
 use std::ops::Add;
 use std::sync::Arc;
-use egui::{CentralPanel, Pos2, Widget};
+use egui::{CentralPanel, Widget};
 use crate::app::{App, get_id, popup_creator};
 use crate::artnet::fixture::{Device, MAX_CHANNEL_ID, MAX_UNIVERSE_ID};
 use crate::fixturestore::FIXTURE_STORE;
@@ -45,12 +45,12 @@ impl<'a> App<'a>{
                 }
             }
             if ui.button("Add Fixture").clicked() {
-                self.open_add_fixture_ui(ui)
+                self.open_add_fixture_ui()
             }
         });
     }
 
-    fn open_add_fixture_ui(&mut self, ui:&mut egui::Ui) {
+    fn open_add_fixture_ui(&mut self) {
         let mut name = "";
         let mut universe = 1;
         let mut start_id = 0;
