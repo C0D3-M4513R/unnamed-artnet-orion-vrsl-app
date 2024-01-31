@@ -1,6 +1,38 @@
 use std::collections::VecDeque;
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, Display, Formatter};
+use std::path::PathBuf;
+use std::sync::Arc;
+use egui::TopBottomPanel;
+use egui::mutex::RwLock;
 use serde_derive::{Deserialize, Serialize};
+use tokio::sync::mpsc::UnboundedSender;
+use common_data::CommonData;
+
+mod common_data;
+mod message;
+mod mode;
+mod storage;
+
+const LAST_OPENED_FILE: &'static str = "LAST_OPENED_FILE";
+
+#[derive(Default, Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Deserialize, Serialize)]
+enum AppMode{
+    FixtureBuilder,
+    #[default]
+    Fixtures,
+    Channels,
+    Functions,
+}
+impl Display for AppMode{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AppMode::FixtureBuilder => write!(f, "FixtureBuilder"),
+            AppMode::Fixtures => write!(f, "Fixtures"),
+            AppMode::Channels => write!(f, "Channels"),
+            AppMode::Functions => write!(f, "Functions"),
+        }
+    }
+}
 
 #[derive(Deserialize, Serialize)]
 pub struct App<'a>{
@@ -10,14 +42,30 @@ pub struct App<'a>{
     #[serde(skip)]
     collector:egui_tracing::EventCollector,
     #[serde(skip)]
+    project_file: Option<PathBuf>,
+    mode: AppMode,
+    /// Data that is shared with also shared with the artnet processing thread
+    #[serde(skip)]
+    common_data_mutex: Arc<RwLock<CommonData>>,
+    /// Clone of the last data, that has been written into the `common_data_mutex`
+    common_data_copy: CommonData,
+    /// Data that is edited in the gui thread, but has not been sent to the artnet thread
+    data: CommonData,
+    #[serde(skip)]
+    channel: Option<UnboundedSender<message::Message>>,
+    #[serde(skip)]
     popups: VecDeque<Box<PopupFunc<'a>>>,
 }
 impl<'a> Debug for App<'a>{
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut debug = f.debug_struct("App");
          debug
-            .field("popups.len()", &self.popups.len())
-            .finish()
+             .field("project_file", &self.project_file)
+             .field("mode", &self.mode)
+             .field("common_data", &"Arc<Mutex<CommmonData>>")
+             .field("channel", &self.channel)
+             .field("popups.len()", &self.popups.len())
+             .finish()
     }
 }
 impl<'a> Default for App<'a>{
@@ -27,6 +75,12 @@ impl<'a> Default for App<'a>{
             logs_visible: false,
             #[cfg(feature = "egui_tracing")]
             collector:egui_tracing::EventCollector::new(),
+            project_file: None,
+            mode: AppMode::default(),
+            common_data_mutex: Arc::new(RwLock::new(CommonData::default())),
+            common_data_copy: CommonData::default(),
+            data: CommonData::default(),
+            channel: None,
             popups: VecDeque::new(),
         }
     }
@@ -50,23 +104,15 @@ impl<'a> App<'a> {
         // Load previous app state (if any).
         // Note that you must enable the `persistence` feature for this to work.
 
-        let slf: App = if let Some(storage) = cc.storage {
-            eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
-        } else {
-            Default::default()
-        };
+        let last_opened_file_opt =
+            cc.storage.map(|storage| eframe::get_value(storage, LAST_OPENED_FILE))
+                .flatten();
+        let mut slf: App = App::default();
+        slf.project_file = last_opened_file_opt;
+        //todo: load project state
+        //todo: start artnet thread
 
-        #[cfg(not(debug_assertions))]
-        log::info!("You are running a release build. Some log statements were disabled.");
         slf
-    }
-
-    fn handle_join_error(
-        &mut self,
-        error: &tokio::task::JoinError,
-        title: impl Into<egui::WidgetText> + 'a,
-    ) {
-        self.handle_display_popup("An unknown error occurred while logging out.", error, title);
     }
 
     fn handle_display_popup<D: std::fmt::Display>(
@@ -87,6 +133,24 @@ impl<'a> App<'a> {
 
 impl<'a> eframe::App for App<'a> {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        TopBottomPanel::top("menu_bar:menu").show(ctx, |ui|{
+           egui::menu::bar(ui, |ui|{
+               egui::menu::menu_button(ui, "File", |ui|{
+
+               });
+               egui::menu::menu_button(ui, "Modes", |ui|{
+                   for e in [AppMode::FixtureBuilder, AppMode::Fixtures, AppMode::Channels, AppMode::Functions] {
+                        ui.selectable_value(&mut self.mode, e, e.to_string());
+                   }
+               });
+           });
+        });
+        match self.mode {
+            AppMode::FixtureBuilder => self.todo(ctx, frame),
+            AppMode::Fixtures => self.fixtures(ctx, frame),
+            AppMode::Channels => self.todo(ctx, frame),
+            AppMode::Functions => self.todo(ctx, frame),
+        }
         self.popups = core::mem::take(&mut self.popups).into_iter().filter_map(|mut popup|{
             if popup(self, ctx, frame) {
                 Some(popup)
@@ -97,7 +161,7 @@ impl<'a> eframe::App for App<'a> {
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        eframe::set_value(storage,eframe::APP_KEY, self)
+        eframe::set_value(storage, LAST_OPENED_FILE, &self.project_file)
     }
 }
 type PopupFunc<'a> = dyn FnMut(&'_ mut App,&'_ egui::Context, &'_ mut eframe::Frame) -> bool + 'a;

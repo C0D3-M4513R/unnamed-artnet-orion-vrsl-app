@@ -8,7 +8,7 @@
     rust-overlay.url = "github:oxalica/rust-overlay";
     flake-compat = {
       url = github:edolstra/flake-compat;
-      flake = false;
+      flake = true;
     };
   };
 
@@ -30,6 +30,7 @@
           xorg.libXcursor
           xorg.libXi
           xorg.libXrandr
+          xorg.libxcb
           fontconfig
         ];
       in
@@ -43,7 +44,6 @@
             pkgs.rust-bin.stable.latest.default
             xorg.libxcb
           ];
-          buildFeatures = ["file_dialog"];
           postInstall = ''
             wrapProgram "$out/bin/$pname" --prefix LD_LIBRARY_PATH : "${libPath}"
           '';

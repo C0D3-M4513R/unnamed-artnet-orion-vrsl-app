@@ -1,0 +1,13 @@
+Todo List:
+----------
+- [ ] Make ArtNet work
+- [ ] Make a working Fixture Ui, for adding fixtures in specific and channels
+  - [ ] Allow replacing of one fixture type for another
+- [ ] Make a working Fixture Builder
+  - [ ] Allow Saving custom fixtures into the fixture store
+  - [ ] Allow Customising the "path" they get saved to
+  - [ ] Allow exporting/importing the fixtures
+- [ ] Make a Simple Channel control
+  - [ ] Make that also serve as a monitor. Changes in the Simple Channel (editor/viewer would take precedence).
+- [ ] Implement Project serialization into something else than the default egui store
+- [ ] Figure out how to do/represent functions/scenes/chasers etc. in a blender-like nodegraph

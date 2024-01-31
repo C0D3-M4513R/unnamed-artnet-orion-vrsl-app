@@ -1,13 +1,7 @@
 use std::sync::Arc;
-use artnet_protocol::PortAddress;
 use serde_derive::{Deserialize, Serialize};
 
-// pub struct Channel{
-//     universe: PortAddress,
-//     channel: u16,
-// }
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Channel{
     action: ChannelAction,
 }
@@ -81,8 +75,7 @@ pub enum SimpleChannelAction{
     SpinRight,
     SpinLeft,
     GOBOSelection,
-    BeamZoomSmallBig,
-    BeamZoomBigSmall,
+    BeamZoom,
     IntensityMasterDimmer,
     IntensityColor(Color),
 }
