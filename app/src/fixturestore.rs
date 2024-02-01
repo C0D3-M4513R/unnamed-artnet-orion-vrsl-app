@@ -36,7 +36,9 @@ impl FixtureStore{
     }
 
     fn add_contained_fixtures(&self, ui: &mut egui::Ui,path: &mut Vec<Arc<str>>, item: &mut (Vec<Arc<str>>, Option<Arc<Fixture>>)) {
-        for i in self.fixtures.iter(){
+        let mut items = self.fixtures.iter().collect::<Vec<_>>();
+        items.sort_by_cached_key(|x|x.key().model.clone());
+        for i in items.into_iter(){
             let key = i.key();
             path.push(key.model.clone());
             if ui.selectable_label(
