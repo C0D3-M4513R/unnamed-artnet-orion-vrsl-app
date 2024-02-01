@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use serde_derive::{Deserialize, Serialize};
+use crate::artnet::fixture::variables::Variable;
 
 #[derive(Debug, Deserialize, Serialize, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Channel{
@@ -30,7 +31,7 @@ impl Channel{
 /// Please note that it should be expected, that `start<end` is possible and should be respected.
 /// In this case the lower value is the start of the range in the actual dmx output range,
 /// but the `action` gets stronger with a lower value.
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(Debug, Deserialize, Serialize, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Range{
     continuous: bool,
     start: u8,
@@ -59,17 +60,17 @@ pub enum ChannelAction{
 ///What does this channel Control?
 ///In general, it is assumed, that a higher dmx value will lead to a higher action.
 ///If that is not the case a `ChannelAction::Selection` should be used to create an inverse map.
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(Debug, Deserialize, Serialize, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub enum SimpleChannelAction{
     NoOp,
     ///data is total range of this channel in degrees
-    PositionPan(usize),
+    PositionPan(Variable<usize>),
     ///data is total range of this channel in degrees
-    PositionPanFine(usize),
+    PositionPanFine(Variable<usize>),//todo: is this really the right data range?
     ///data is total range of this channel in degrees
-    PositionTilt(usize),
+    PositionTilt(Variable<usize>),
     ///data is total range of this channel in degrees
-    PositionTiltFine(usize),
+    PositionTiltFine(Variable<usize>),//todo: is this really the right data range?
     Speed,
     Strobo,
     SpinRight,

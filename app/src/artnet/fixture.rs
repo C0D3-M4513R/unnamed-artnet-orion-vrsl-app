@@ -4,26 +4,71 @@ use serde_derive::{Deserialize, Serialize};
 use channel::Channel;
 
 pub mod channel;
+pub mod variables;
 
-pub(crate) const MAX_UNIVERSE_ID:u16 = 2^15;
-pub(crate) const MAX_CHANNEL_ID:u16 = 2^9;
+pub(crate) const MAX_UNIVERSE_ID:u16 = 1<<15;
+pub(crate) const MAX_CHANNEL_ID:u16 = 1<<9;
 
 #[derive(Debug, Deserialize, Serialize, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Fixture{
-    pub manufacturer: Arc<str>,
-    pub model: Arc<str>,
-    pub r#type: Arc<str>,
-    pub channels: Arc<[Channel]>,
+    manufacturer: Arc<str>,
+    extra_path: Arc<[Arc<str>]>,
+    model: Arc<str>,
+    r#type: Arc<str>,
+    channels: Arc<[Channel]>,
 }
 
 impl Fixture {
-    pub const fn new(manufacturer: Arc<str>, model: Arc<str>, r#type: Arc<str>, channels: Arc<[Channel]>) -> Self {
+    #[inline]
+    pub fn new(manufacturer: Arc<str>, model: Arc<str>, r#type: Arc<str>, channels: Arc<[Channel]>) -> Self {
+        Self::new_path(
+            manufacturer,
+            Arc::from([]),
+            model,
+            r#type,
+            channels,
+        )
+    }
+    #[inline]
+    pub const fn new_path(manufacturer: Arc<str>, extra_path: Arc<[Arc<str>]>, model: Arc<str>, r#type: Arc<str>, channels: Arc<[Channel]>) -> Self {
         Fixture {
             manufacturer,
+            extra_path,
             model,
             r#type,
             channels,
         }
+    }
+
+    #[inline]
+    pub const fn get_manufacturer(&self) -> &Arc<str> {
+        &self.manufacturer
+    }
+
+    #[inline]
+    pub const fn get_model(&self) -> &Arc<str> {
+        &self.model
+    }
+
+    #[inline]
+    pub const fn get_type(&self) -> &Arc<str> {
+        &self.r#type
+    }
+
+    #[inline]
+    pub const fn get_channels(&self) -> &Arc<[Channel]> {
+        &self.channels
+    }
+
+    #[must_use]
+    ///Get the path of this fixture in the fixture store.
+    ///This is used by the fixture store, to place fixtures into the fixture store.
+    pub fn get_path(&self) -> Arc<[Arc<str>]> {
+        let mut path = Vec::with_capacity(2+self.extra_path.len());
+        path.push(self.get_manufacturer().clone());
+        path.extend_from_slice(self.extra_path.as_ref());
+        path.push(self.get_model().clone());
+        path.into()
     }
 }
 

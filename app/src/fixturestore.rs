@@ -4,6 +4,7 @@ use once_cell::sync::Lazy;
 use serde_derive::{Deserialize, Serialize};
 use crate::artnet::fixture::channel::{Channel, ChannelAction, Color, ColorRGB, Range, SimpleChannelAction};
 use crate::artnet::fixture::Fixture;
+use crate::artnet::fixture::variables::Variable;
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct FixtureStore{
@@ -37,13 +38,13 @@ impl FixtureStore{
 
     fn add_contained_fixtures(&self, ui: &mut egui::Ui,path: &mut Vec<Arc<str>>, item: &mut (Vec<Arc<str>>, Option<Fixture>)) {
         let mut items = self.fixtures.iter().collect::<Vec<_>>();
-        items.sort_by_cached_key(|x|x.key().model.clone());
+        items.sort_by_cached_key(|x|x.key().get_model().clone());
         for i in items.into_iter(){
             let key = i.key();
-            path.push(key.model.clone());
+            path.push(key.get_model().clone());
             if ui.selectable_label(
                 item.1.as_ref().map(|f|f==key).unwrap_or(false),
-                key.model.as_ref()
+                key.get_model().as_ref()
             ).clicked() {
                 *item = (path.clone(), Some(key.clone()));
             }
@@ -87,29 +88,24 @@ macro_rules! create_arc {
 }
 create_arc!(
     VRSL, "VRSL",
-    VARYING, "varying",
-    PAN180, "Pan180",
-    PAN360, "Pan360",
-    PAN540, "Pan540",
-    TILT180, "Tilt180",
-    TILT250, "Tilt250",
-    TILT270, "Tilt270",
     STANDARD_MOVER_SPOTLIGHT, "Standard Mover Spotlight",
     MOVING_HEAD, "Moving Head",
     STANDARD_LASER, "Standard Laser",
     LASER, "Laser"
 );
-const VRSL_MOVING_HEAD:fn(usize, usize)->Fixture = |max_pan, max_tilt|Fixture {
-    manufacturer: VRSL.clone(),
-    model: STANDARD_MOVER_SPOTLIGHT.clone(),
-    r#type: MOVING_HEAD.clone(),
-    channels: Arc::new([
-        Channel::new_simple(SimpleChannelAction::PositionPan(max_pan)),
+const VRSL_PANS:Lazy<Arc<[usize]>> = Lazy::new(||Arc::from([180,360,540]));
+const VRSL_TILTS:Lazy<Arc<[usize]>> = Lazy::new(||Arc::from([180,250,270]));
+const VRSL_MOVING_HEAD:Lazy<Fixture> = Lazy::new(||Fixture::new(
+    VRSL.clone(),
+    STANDARD_MOVER_SPOTLIGHT.clone(),
+    MOVING_HEAD.clone(),
+    Arc::new([
+        Channel::new_simple(SimpleChannelAction::PositionPan(Variable::Selection(VRSL_PANS.clone()))),
         //todo: vrsl - currently disabled, because the linear smoothing algorithm outweighs this
-        Channel::new_simple(SimpleChannelAction::PositionPanFine(0)),
-        Channel::new_simple(SimpleChannelAction::PositionTilt(max_tilt)),
+        Channel::new_simple(SimpleChannelAction::PositionPanFine(Variable::Set(0))),
+        Channel::new_simple(SimpleChannelAction::PositionTilt(Variable::Selection(VRSL_TILTS.clone()))),
         //todo: vrsl - currently disabled, because the linear smoothing algorithm outweighs this
-        Channel::new_simple(SimpleChannelAction::PositionTiltFine(0)),
+        Channel::new_simple(SimpleChannelAction::PositionTiltFine(Variable::Set(0))),
         Channel::new_simple(SimpleChannelAction::BeamZoom),
         Channel::new_simple(SimpleChannelAction::IntensityMasterDimmer),
         Channel::new(ChannelAction::Selection(Arc::new([
@@ -133,12 +129,12 @@ const VRSL_MOVING_HEAD:fn(usize, usize)->Fixture = |max_pan, max_tilt|Fixture {
         ]))),
         Channel::new_simple(SimpleChannelAction::Speed),
     ]),
-};
-const VRSL_PAR_LIGHT:Lazy<Fixture> = Lazy::new(||Fixture {
-    manufacturer: VRSL.clone(),
-    model: Arc::from("Standard Par Light"),
-    r#type: Arc::from("Color Changer"),
-    channels: Arc::new([
+));
+const VRSL_PAR_LIGHT:Lazy<Fixture> = Lazy::new(||Fixture::new(
+    VRSL.clone(),
+    Arc::from("Standard Par Light"),
+    Arc::from("Color Changer"),
+    Arc::new([
         Channel::new_simple(SimpleChannelAction::NoOp),
         Channel::new_simple(SimpleChannelAction::NoOp),
         Channel::new_simple(SimpleChannelAction::NoOp),
@@ -156,12 +152,12 @@ const VRSL_PAR_LIGHT:Lazy<Fixture> = Lazy::new(||Fixture {
         Channel::new_simple(SimpleChannelAction::NoOp),
         Channel::new_simple(SimpleChannelAction::NoOp),
     ]),
-});
-const VRSL_BAR_LIGHT:Lazy<Fixture> = Lazy::new(||Fixture {
-    manufacturer: VRSL.clone(),
-    model: Arc::from("Standard BarLight"),
-    r#type: Arc::from("LED Bar (Pixels)"),
-    channels: Arc::new([
+));
+const VRSL_BAR_LIGHT:Lazy<Fixture> = Lazy::new(||Fixture::new(
+    VRSL.clone(),
+    Arc::from("Standard BarLight"),
+    Arc::from("LED Bar (Pixels)"),
+    Arc::new([
         Channel::new_simple(SimpleChannelAction::NoOp),
         Channel::new_simple(SimpleChannelAction::NoOp),
         Channel::new_simple(SimpleChannelAction::NoOp),
@@ -179,12 +175,12 @@ const VRSL_BAR_LIGHT:Lazy<Fixture> = Lazy::new(||Fixture {
         Channel::new_simple(SimpleChannelAction::NoOp),
         Channel::new_simple(SimpleChannelAction::NoOp),
     ]),
-});
-const VRSL_BLINDER:Lazy<Fixture> = Lazy::new(||Fixture {
-    manufacturer: VRSL.clone(),
-    model: Arc::from("Standard Blinder"),
-    r#type: Arc::from("Strobe"),
-    channels: Arc::new([
+));
+const VRSL_BLINDER:Lazy<Fixture> = Lazy::new(||Fixture::new(
+    VRSL.clone(),
+    Arc::from("Standard Blinder"),
+    Arc::from("Strobe"),
+    Arc::new([
         Channel::new_simple(SimpleChannelAction::NoOp),
         Channel::new_simple(SimpleChannelAction::NoOp),
         Channel::new_simple(SimpleChannelAction::NoOp),
@@ -202,14 +198,14 @@ const VRSL_BLINDER:Lazy<Fixture> = Lazy::new(||Fixture {
         Channel::new_simple(SimpleChannelAction::NoOp),
         Channel::new_simple(SimpleChannelAction::NoOp),
     ]),
-});
-const VRSL_LASER:fn(usize, usize)->Fixture = |max_pan, max_tilt|Fixture {
-    manufacturer: VRSL.clone(),
-    model: STANDARD_LASER.clone(),
-    r#type: LASER.clone(),
-    channels: Arc::new([
-        Channel::new_simple(SimpleChannelAction::PositionPan(max_pan)), //todo: in qcl's fixture config, this is statically 0.
-        Channel::new_simple(SimpleChannelAction::PositionTilt(max_tilt)), //todo: in qcl's fixture config, this is statically 0.
+));
+const VRSL_LASER:Lazy<Fixture> = Lazy::new(||Fixture::new(
+    VRSL.clone(),
+    STANDARD_LASER.clone(),
+    LASER.clone(),
+    Arc::new([
+        Channel::new_simple(SimpleChannelAction::PositionPan(Variable::Selection(VRSL_PANS.clone()))),
+        Channel::new_simple(SimpleChannelAction::PositionTilt(Variable::Selection(VRSL_TILTS.clone()))),
         Channel::new_simple(SimpleChannelAction::NoOp), //todo: laser width
         Channel::new_simple(SimpleChannelAction::NoOp), //todo: laser flatness
         Channel::new_simple(SimpleChannelAction::NoOp), //todo: beam count
@@ -222,36 +218,11 @@ const VRSL_LASER:fn(usize, usize)->Fixture = |max_pan, max_tilt|Fixture {
         Channel::new_simple(SimpleChannelAction::NoOp), //todo: length
         Channel::new_simple(SimpleChannelAction::Speed),
     ]),
-};
+));
 //</editor-fold>
 
-const fn get_pan() -> [(usize, Lazy<Arc<str>, fn() -> Arc<str>>); 3] {
-    [
-        (180, PAN180),
-        (360, PAN360),
-        (540, PAN540)
-    ]
-}
-const fn get_tilt() -> [(usize, Lazy<Arc<str>, fn() -> Arc<str>>); 3] {
-    [
-        (180, TILT180),
-        (250, TILT250),
-        (270, TILT270)
-    ]
-}
-
 pub(crate) fn populate_fixture_store_defaults(){
-    for fixture in [VRSL_PAR_LIGHT, VRSL_BAR_LIGHT, VRSL_BLINDER]{
-        FIXTURE_STORE.put_path(&[fixture.manufacturer.clone()], fixture.clone());
-    }
-    for (pan, pan_key) in get_pan(){
-        let pan_key = &*pan_key;
-        for (tilt, tilt_key) in get_tilt(){
-            let tilt_key = &*tilt_key;
-            for fixture in [VRSL_MOVING_HEAD, VRSL_LASER] {
-                let fixture = fixture(pan, tilt);
-                FIXTURE_STORE.put_path(&[fixture.manufacturer.clone(), (&*VARYING).clone(), pan_key.clone(), tilt_key.clone()], fixture);
-            }
-        }
+    for fixture in [VRSL_PAR_LIGHT, VRSL_BAR_LIGHT, VRSL_BLINDER, VRSL_MOVING_HEAD, VRSL_LASER]{
+        FIXTURE_STORE.put_path(fixture.get_path().as_ref(), fixture.clone());
     }
 }

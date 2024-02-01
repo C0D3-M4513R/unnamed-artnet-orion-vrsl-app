@@ -7,6 +7,7 @@ use egui::mutex::RwLock;
 use serde_derive::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
 use common_data::CommonData;
+use crate::app::common_data::UniverseError;
 
 mod common_data;
 mod message;
@@ -44,6 +45,10 @@ pub struct App<'a>{
     #[serde(skip)]
     project_file: Option<PathBuf>,
     mode: AppMode,
+    ///Mode Channels:
+    view_by_device: bool,
+    view_universe: u16,
+    view_universe_error: Option<UniverseError>,
     /// Data that is shared with also shared with the artnet processing thread
     #[serde(skip)]
     common_data_mutex: Arc<RwLock<CommonData>>,
@@ -62,6 +67,9 @@ impl<'a> Debug for App<'a>{
          debug
              .field("project_file", &self.project_file)
              .field("mode", &self.mode)
+             .field("view_by_device", &self.view_by_device)
+             .field("view_universe", &self.view_universe)
+             .field("view_universe_error", &self.view_universe_error)
              .field("common_data", &"Arc<Mutex<CommmonData>>")
              .field("channel", &self.channel)
              .field("popups.len()", &self.popups.len())
@@ -77,6 +85,9 @@ impl<'a> Default for App<'a>{
             collector:egui_tracing::EventCollector::new(),
             project_file: None,
             mode: AppMode::default(),
+            view_by_device: false,
+            view_universe: 1,
+            view_universe_error: None,
             common_data_mutex: Arc::new(RwLock::new(CommonData::default())),
             common_data_copy: CommonData::default(),
             data: CommonData::default(),
@@ -148,7 +159,7 @@ impl<'a> eframe::App for App<'a> {
         match self.mode {
             AppMode::FixtureBuilder => self.todo(ctx, frame),
             AppMode::Fixtures => self.fixtures(ctx, frame),
-            AppMode::Channels => self.todo(ctx, frame),
+            AppMode::Channels => self.channels(ctx, frame),
             AppMode::Functions => self.todo(ctx, frame),
         }
         self.popups = core::mem::take(&mut self.popups).into_iter().filter_map(|mut popup|{

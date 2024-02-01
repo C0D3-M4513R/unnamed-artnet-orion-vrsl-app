@@ -24,7 +24,7 @@ impl<'a> App<'a>{
                             ui.end_row();
                             for (dev_id, device) in devices.iter().enumerate(){
                                 ui.label(dev_id.to_string());
-                                ui.label(device.fixture.model.as_ref());
+                                ui.label(device.fixture.get_model().as_ref());
                                 ui.label(device.start_id.to_string());
                                 ui.label(device.end_channel().to_string());
                                 if ui.button("Remove").clicked() {
@@ -115,10 +115,10 @@ impl<'a> App<'a>{
                         }
 
                         if let Some(err) = universe_err{
-                            ui_universe.ctx.debug_painter().error(ui_universe.rect.left_bottom(), err.to_string());
+                            ui_universe.ctx.debug_painter().error(ui_universe.rect.left_bottom(), err);
                         }
                         if let Some(err) = device_insert_err{
-                            ui_channel.ctx.debug_painter().error(ui_channel.rect.left_bottom(), err.to_string());
+                            ui_channel.ctx.debug_painter().error(ui_channel.rect.left_bottom(), err);
                         }
 
                         if ui.button("Clear").clicked() {
