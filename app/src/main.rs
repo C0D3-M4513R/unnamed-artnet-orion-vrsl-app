@@ -1,5 +1,44 @@
-#![forbid(unsafe_code, future_incompatible, clippy::unwrap_used, clippy::panic, clippy::panic_in_result_fn, clippy::unwrap_in_result, clippy::unreachable)]
+#![forbid(
+    unsafe_code,
+    future_incompatible,
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::panic_in_result_fn,
+    clippy::unwrap_in_result,
+    clippy::unreachable,
+    clippy::suspicious_xor_used_as_pow,
+    clippy::semicolon_inside_block,
+    clippy::mod_module_files,
+    clippy::missing_assert_message,
+    clippy::mem_forget,
+    clippy::map_err_ignore,
+    clippy::indexing_slicing,
+    clippy::fn_to_numeric_cast_any,
+    clippy::float_cmp_const,
+    clippy::float_arithmetic,
+    clippy::exit,
+    clippy::error_impl_error,
+    clippy::empty_structs_with_brackets,
+    clippy::empty_drop,
+    clippy::disallowed_script_idents,
+    clippy::deref_by_slicing,
+    clippy::default_union_representation,
+    clippy::allow_attributes,
+    clippy::allow_attributes_without_reason
+)]
 #![deny(clippy::expect_used)]
+#![warn(
+    clippy::nursery,
+    clippy::pedantic,
+    clippy::suspicious,
+    clippy::complexity,
+    clippy::perf,
+    clippy::style,
+    clippy::else_if_without_else,
+    clippy::dbg_macro,
+    clippy::create_dir
+)]
+#![allow(clippy::semicolon_if_nothing_returned)]
 #![windows_subsystem = "windows"]
 
 use std::sync::OnceLock;
@@ -14,8 +53,9 @@ mod app;
 mod artnet;
 mod u9;
 mod fixturestore;
+mod degree;
 
-const APP_NAME: &'static str = "Unnamed ArtNet App for Club Orion/VRSL";
+const APP_NAME: &str = "Unnamed ArtNet App for Club Orion/VRSL";
 static RUNTIME: OnceLock<Runtime> = OnceLock::new();
 fn get_runtime() -> &'static Runtime {
     RUNTIME.get_or_init(|| {
@@ -79,7 +119,6 @@ fn main() {
     let rt = get_runtime();
     let _a = rt.enter(); // "_" as a variable name immediately drops the value, causing no tokio runtime to be registered. "_a" does not.
     log::info!("Tokio Runtime initialized");
-    fixturestore::populate_fixture_store_defaults();
     let native_options = eframe::NativeOptions::default();
     if let Some(err) = eframe::run_native(
         APP_NAME,
@@ -95,9 +134,8 @@ fn main() {
         .err()
     {
         eprintln!(
-            "Error in eframe whilst trying to start the application: {}",
-            err
+            "Error in eframe whilst trying to start the application: {err}"
         );
     }
-    println!("GUI exited. Thank you for using {}!", APP_NAME);
+    println!("GUI exited. Thank you for using {APP_NAME}!");
 }

@@ -1,3 +1,3 @@
 pub mod fixture;
-pub(crate) mod channel;
+pub mod channel;
 pub mod universe;

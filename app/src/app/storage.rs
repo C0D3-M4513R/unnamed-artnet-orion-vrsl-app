@@ -1,19 +1,21 @@
+#![allow(dead_code)] //todo: re-check, once the major implementation of this app has been done.
 use std::io::SeekFrom;
 use std::path::Path;
 use std::sync::Arc;
 use dashmap::DashMap;
 use eframe::{Storage, storage_dir};
+use ron::ser::PrettyConfig;
 use tokio::io::{AsyncSeekExt, AsyncWriteExt};
 use crate::get_runtime;
 
-pub struct FileStorage {
+pub struct FileStore {
     ron_filepath: Arc<Path>,
     kv: Arc<DashMap<String, String>>,
     dirty: bool,
     last_save_join_handle: Option<tokio::task::JoinHandle<()>>,
 }
 
-impl Drop for FileStorage {
+impl Drop for FileStore {
     fn drop(&mut self) {
         if let Some(join_handle) = self.last_save_join_handle.take() {
             if let Err(err) = get_runtime().block_on(join_handle){
@@ -23,21 +25,29 @@ impl Drop for FileStorage {
     }
 }
 
-impl FileStorage {
+impl FileStore {
     /// Store the state in this .ron file.
-    fn from_ron_filepath(ron_filepath: Arc<Path>) -> Self {
+    ///
+    /// The user of this function is responsible for making sure,
+    /// that the `ron_filepath` can be read from.
+    /// If the `ron_filepath` cannot be read from,
+    /// this storage will just take the default value
+    fn from_ron_filepath(ron_filepath: Arc<Path>) -> Option<Self> {
         log::debug!("Loading app state from {:?}…", ron_filepath);
-        Self {
-            kv: read_ron(&ron_filepath).unwrap_or_default(),
+        Some(Self {
+            kv: read_ron(&ron_filepath)?,
             ron_filepath,
             dirty: false,
             last_save_join_handle: None,
-        }
+        })
     }
 
     /// Find a good place to put the files that the OS likes.
     pub fn from_app_id(app_id: &str) -> Option<Self> {
-        if let Some(data_dir) = storage_dir(app_id) {
+        storage_dir(app_id).map_or_else(||{
+            log::warn!("Saving disabled: Failed to find path to data_dir.");
+            None
+        }, |data_dir|{
             if let Err(err) = std::fs::create_dir_all(&data_dir) {
                 log::warn!(
                     "Saving disabled: Failed to create app path at {:?}: {}",
@@ -46,12 +56,9 @@ impl FileStorage {
                 );
                 None
             } else {
-                Some(Self::from_ron_filepath(Arc::from(data_dir.to_path_buf().join("app.ron"))))
+                Self::from_ron_filepath(Arc::from(data_dir.join("app.ron")))
             }
-        } else {
-            log::warn!("Saving disabled: Failed to find path to data_dir.");
-            None
-        }
+        })
     }
     fn _set_string(&mut self, key: &str, value: String){
         self.kv.insert(key.to_owned(), value);
@@ -59,7 +66,7 @@ impl FileStorage {
     }
 }
 
-impl Storage for FileStorage {
+impl Storage for FileStore {
     fn get_string(&self, key: &str) -> Option<String> {
         self.kv.get(key).map(|x|x.key().clone())
     }
@@ -87,7 +94,7 @@ impl Storage for FileStorage {
                     None => {}
                     // wait for previous save to complete.
                     Some(v) => match v.await{
-                        Ok(_) => {}
+                        Ok(()) => {}
                         Err(e) => {
                             log::warn!("Error whilst saving to disk: {}", e);
                         }
@@ -111,7 +118,7 @@ async fn save_to_disk(file_path: Arc<Path>, kv: Arc<DashMap<String, String>>) {
 
     match tokio::fs::File::create(&file_path).await {
         Ok(mut file) => {
-            let config = Default::default();
+            let config = PrettyConfig::default();
             match ron::ser::to_string_pretty(&kv, config){
                 Ok(out) => {
                     if let Err(err) = file.seek(SeekFrom::Start(0)).await {

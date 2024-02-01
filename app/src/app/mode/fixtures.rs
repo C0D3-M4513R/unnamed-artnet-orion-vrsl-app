@@ -11,7 +11,7 @@ impl<'a> App<'a>{
         CentralPanel::default().show(ctx, |ui| {
             for (universe, devices) in self.data.device_iter().enumerate() {
                 if devices.is_empty() {continue;}
-                let universe_str =format!("Universe {}", universe);
+                let universe_str =format!("Universe {universe}");
                 ui.collapsing(&universe_str, |ui|{
                     egui::Grid::new("fixtures:".to_string().add(universe_str.as_str()))
                         .num_columns(5)
@@ -61,23 +61,31 @@ impl<'a> App<'a>{
         self.popups.push_back(popup_creator("Add Fixture", move |app, ui|{
             egui::Grid::new(grid_id)
                 .show(ui, |ui|{
-                    let ui_universe;
-                    let ui_channel;
                     ui.label("Name: ");
                     ui.text_edit_singleline(&mut name);
                     ui.end_row();
 
                     ui.label("Universe: ");
-                    ui_universe = egui::DragValue::new(&mut universe)
-                        .clamp_range(0..=MAX_UNIVERSE_ID-1)
-                        .ui(ui);
+                    let ui_universe = {
+                        #[allow(clippy::range_minus_one)] //bad suggestion - would lead to compilation error
+                        {
+                            egui::DragValue::new(&mut universe)
+                                .clamp_range(0..=MAX_UNIVERSE_ID-1)
+                                .ui(ui)
+                        }
+                    };
 
                     ui.end_row();
 
                     ui.label("Start Channel: ");
-                    ui_channel = egui::DragValue::new(&mut start_id)
-                        .clamp_range(0..=MAX_CHANNEL_ID-1)
-                        .ui(ui);
+                    let ui_channel = {
+                        #[allow(clippy::range_minus_one)] //bad suggestion - would lead to compilation error
+                        {
+                            egui::DragValue::new(&mut start_id)
+                                .clamp_range(0..=MAX_CHANNEL_ID-1)
+                                .ui(ui)
+                        }
+                    };
                     ui.end_row();
 
                     ui.menu_button(format!("{} Fixture", if opt_fixture.0.is_empty() {"Set"} else {"Change"}), |ui|{
@@ -104,7 +112,7 @@ impl<'a> App<'a>{
                                     }
                                     Ok(universe)=>{
                                         match universe.try_insert(Device::new(Arc::from(name), start_id, fixture.clone())){
-                                            Ok(_) => {}
+                                            Ok(()) => {}
                                             Err(err) => {
                                                 device_insert_err = Some(err);
                                             }

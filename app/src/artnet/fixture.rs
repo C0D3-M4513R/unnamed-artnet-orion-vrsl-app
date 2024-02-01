@@ -6,8 +6,8 @@ use channel::Channel;
 pub mod channel;
 pub mod variables;
 
-pub(crate) const MAX_UNIVERSE_ID:u16 = 1<<15;
-pub(crate) const MAX_CHANNEL_ID:u16 = 1<<9;
+pub const MAX_UNIVERSE_ID:u16 = 1<<15;
+pub const MAX_CHANNEL_ID:u16 = 1<<9;
 
 #[derive(Debug, Deserialize, Serialize, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Fixture{
@@ -31,7 +31,7 @@ impl Fixture {
     }
     #[inline]
     pub const fn new_path(manufacturer: Arc<str>, extra_path: Arc<[Arc<str>]>, model: Arc<str>, r#type: Arc<str>, channels: Arc<[Channel]>) -> Self {
-        Fixture {
+        Self {
             manufacturer,
             extra_path,
             model,
@@ -83,14 +83,15 @@ pub struct Device {
 
 impl Device{
     pub const fn new(name: Arc<str>, start_id: u16, fixture: Fixture) -> Self {
-        Device{
+        Self{
             name,
             start_id,
             fixture,
             _mark: PhantomData{},
         }
     }
+    #[allow(clippy::cast_possible_truncation)]
     pub fn end_channel(&self) -> u64 {
-        self.start_id as u64+self.fixture.channels.len() as u64
+        u64::from(self.start_id)+self.fixture.channels.len() as u64
     }
 }

@@ -8,13 +8,14 @@ use serde_derive::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
 use common_data::CommonData;
 use crate::app::common_data::UniverseError;
+use crate::fixturestore::FixtureStore;
 
 mod common_data;
 mod message;
 mod mode;
 mod storage;
 
-const LAST_OPENED_FILE: &'static str = "LAST_OPENED_FILE";
+const LAST_OPENED_FILE: &str = "LAST_OPENED_FILE";
 
 #[derive(Default, Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Deserialize, Serialize)]
 enum AppMode{
@@ -27,10 +28,10 @@ enum AppMode{
 impl Display for AppMode{
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            AppMode::FixtureBuilder => write!(f, "FixtureBuilder"),
-            AppMode::Fixtures => write!(f, "Fixtures"),
-            AppMode::Channels => write!(f, "Channels"),
-            AppMode::Functions => write!(f, "Functions"),
+            Self::FixtureBuilder => write!(f, "FixtureBuilder"),
+            Self::Fixtures => write!(f, "Fixtures"),
+            Self::Channels => write!(f, "Channels"),
+            Self::Functions => write!(f, "Functions"),
         }
     }
 }
@@ -42,6 +43,7 @@ pub struct App<'a>{
     #[cfg(feature = "egui_tracing")]
     #[serde(skip)]
     collector:egui_tracing::EventCollector,
+    fixture_store: FixtureStore,
     #[serde(skip)]
     project_file: Option<PathBuf>,
     mode: AppMode,
@@ -51,6 +53,8 @@ pub struct App<'a>{
     view_universe_error: Option<UniverseError>,
     /// Data that is shared with also shared with the artnet processing thread
     #[serde(skip)]
+    ///invariant: common_data_mutex==common_data_copy
+    /// The artnet thread should thus take care not to modify that data.
     common_data_mutex: Arc<RwLock<CommonData>>,
     /// Clone of the last data, that has been written into the `common_data_mutex`
     common_data_copy: CommonData,
@@ -83,6 +87,7 @@ impl<'a> Default for App<'a>{
             logs_visible: false,
             #[cfg(feature = "egui_tracing")]
             collector:egui_tracing::EventCollector::new(),
+            fixture_store: FixtureStore::default(),
             project_file: None,
             mode: AppMode::default(),
             view_by_device: false,
@@ -116,9 +121,9 @@ impl<'a> App<'a> {
         // Note that you must enable the `persistence` feature for this to work.
 
         let last_opened_file_opt =
-            cc.storage.map(|storage| eframe::get_value(storage, LAST_OPENED_FILE))
-                .flatten();
+            cc.storage.and_then(|storage| eframe::get_value(storage, LAST_OPENED_FILE));
         let mut slf: App = App::default();
+        slf.fixture_store.populate_fixture_store_defaults();
         slf.project_file = last_opened_file_opt;
         //todo: load project state
         //todo: start artnet thread
@@ -126,6 +131,7 @@ impl<'a> App<'a> {
         slf
     }
 
+    #[allow(dead_code)] //todo: re-check this, once the major functionality is implemented
     fn handle_display_popup<D: std::fmt::Display>(
         &mut self,
         label: impl Into<egui::WidgetText> + 'a,
@@ -133,7 +139,7 @@ impl<'a> App<'a> {
         title: impl Into<egui::WidgetText> + 'a,
     ) {
         let error_string = error.to_string();
-        let label = label.into().clone();
+        let label = label.into();
         self.popups.push_front(popup_creator(title, move |_, ui| {
             ui.label(label.clone());
             ui.label("Some developer information below:");
@@ -147,20 +153,34 @@ impl<'a> eframe::App for App<'a> {
         TopBottomPanel::top("menu_bar:menu").show(ctx, |ui|{
            egui::menu::bar(ui, |ui|{
                egui::menu::menu_button(ui, "File", |ui|{
-                   //todo: add functionality
+                   if ui.button("Save").clicked(){
+                        todo!("add save functionality")
+                   }
+                   if ui.button("Open").clicked(){
+                        todo!("add open functionality")
+                   }
                });
                egui::menu::menu_button(ui, "Modes", |ui|{
                    for e in [AppMode::FixtureBuilder, AppMode::Fixtures, AppMode::Channels, AppMode::Functions] {
                         ui.selectable_value(&mut self.mode, e, e.to_string());
                    }
                });
+               if ui.button("Apply Pending Changes").clicked() {
+                   //todo: is this fine? This depends on the artnet thread.
+                   // It should take care to hold the read guard for as little time as possible.
+                   let mut write_guard = self.common_data_mutex.write();
+                   *write_guard = self.data.clone();
+                   self.common_data_copy = self.data.clone();
+                   drop(write_guard);
+               }
            });
         });
         match self.mode {
-            AppMode::FixtureBuilder => self.todo(ctx, frame),
             AppMode::Fixtures => self.fixtures(ctx, frame),
             AppMode::Channels => self.channels(ctx, frame),
-            AppMode::Functions => self.todo(ctx, frame),
+            AppMode::FixtureBuilder |
+            AppMode::Functions
+                => self.todo(ctx, frame),
         }
         self.popups = core::mem::take(&mut self.popups).into_iter().filter_map(|mut popup|{
             if popup(self, ctx, frame) {

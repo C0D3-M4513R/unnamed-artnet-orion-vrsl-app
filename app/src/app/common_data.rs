@@ -21,11 +21,16 @@ pub enum UniverseError{
 impl CommonData{
     fn ensure_size(&mut self, universe: u16){
         if universe as usize >= self.devices.len()  {
-            let mut functions = universe as usize + 1 - self.devices.len();
+            let mut functions = {
+                #[allow(clippy::cast_possible_truncation)]
+                {
+                    universe - self.devices.len() as u16 + 1
+                }
+            };
             self.devices.extend(core::iter::from_fn(||
                 if functions == 0 {None}
                 else {
-                    let ret = Universe::new_default(functions as u16);
+                    let ret = Universe::new_default(functions);
                     functions-=1;
                     Some(ret)
                 }

@@ -35,7 +35,7 @@ impl<'a> core::iter::IntoIterator for &'a Universe {
 }
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, thiserror::Error)]
-pub enum UniverseInsertError {
+pub enum InsertError {
     #[error("The starting Channel-Id is too big. {0} is bigger than 512")]
     StartIdTooBig(u16),
     #[error("The ending Channel-Id is too big. {0} is bigger than 512")]
@@ -46,18 +46,14 @@ pub enum UniverseInsertError {
 
 impl Universe{
     pub const fn new(id: u16, devices: Vec<Device>) -> Self {
-        Universe{
+        Self{
             id,
             devices,
             _marker: PhantomData{}
         }
     }
     pub const fn new_default(id: u16) -> Self {
-        Universe{
-            id,
-            devices: Vec::new(),
-            _marker: PhantomData{}
-        }
+        Self::new(id, Vec::new())
     }
 
     pub fn len(&self) -> usize {
@@ -75,31 +71,37 @@ impl Universe{
     pub fn remove(&mut self, index: usize) -> Device {
         self.devices.remove(index)
     }
-    pub fn try_insert(&mut self, device: Device) -> Result<(), UniverseInsertError> {
+    pub fn try_insert(&mut self, device: Device) -> Result<(), InsertError> {
         if device.start_id >= 512{
-            return Err(UniverseInsertError::StartIdTooBig(device.start_id));
+            return Err(InsertError::StartIdTooBig(device.start_id));
         }
         let end_channel = device.end_channel();
         if end_channel >= 512 {
-            return Err(UniverseInsertError::EndIdTooBig(end_channel));
+            return Err(InsertError::EndIdTooBig(end_channel));
         }
-        let end_channel = end_channel as u16;
+        let end_channel = {
+            #[allow(clippy::cast_possible_truncation)]
+            {
+                end_channel as u16
+            }
+        };
+
         self.devices.sort_unstable_by_key(|device|device.start_id);
         match self.devices.binary_search_by_key(&device.start_id, |other_dev|other_dev.start_id){
-            Ok(_) => Err(UniverseInsertError::ChannelAlreadyAssigned),
+            Ok(_) => Err(InsertError::ChannelAlreadyAssigned),
             Err(v) => {
                 //is there a previous element?
                 if v > 0{
                     let prev_dev = self.devices.index(v-1);
-                    if prev_dev.end_channel() >= device.start_id as u64 {
-                        return Err(UniverseInsertError::ChannelAlreadyAssigned);
+                    if prev_dev.end_channel() >= u64::from(device.start_id) {
+                        return Err(InsertError::ChannelAlreadyAssigned);
                     }
                 }
                 //is there a next element?
                 if v+1 < self.devices.len() {
                     let next_dev = self.devices.index(v+1);
                     if end_channel > next_dev.start_id {
-                        return Err(UniverseInsertError::ChannelAlreadyAssigned);
+                        return Err(InsertError::ChannelAlreadyAssigned);
                     }
                 }
                 self.devices.insert(v, device);
