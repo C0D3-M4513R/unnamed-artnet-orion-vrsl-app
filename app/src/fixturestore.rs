@@ -7,7 +7,7 @@ use crate::artnet::fixture::Fixture;
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct FixtureStore{
-    fixtures: DashSet<Arc<Fixture>>,
+    fixtures: DashSet<Fixture>,
     contained_paths: DashMap<Arc<str>, FixtureStore>,
 }
 
@@ -31,11 +31,11 @@ impl FixtureStore{
         }
     }
 
-    fn put_path(&self, path: &[Arc<str>], fixture: Arc<Fixture>) {
+    fn put_path(&self, path: &[Arc<str>], fixture: Fixture) {
         self.get_path(path, |fs|fs.fixtures.insert(fixture));
     }
 
-    fn add_contained_fixtures(&self, ui: &mut egui::Ui,path: &mut Vec<Arc<str>>, item: &mut (Vec<Arc<str>>, Option<Arc<Fixture>>)) {
+    fn add_contained_fixtures(&self, ui: &mut egui::Ui,path: &mut Vec<Arc<str>>, item: &mut (Vec<Arc<str>>, Option<Fixture>)) {
         let mut items = self.fixtures.iter().collect::<Vec<_>>();
         items.sort_by_cached_key(|x|x.key().model.clone());
         for i in items.into_iter(){
@@ -50,7 +50,7 @@ impl FixtureStore{
             path.pop();
         }
     }
-    pub fn _build_menu(&self, ui: &mut egui::Ui, path: &mut Vec<Arc<str>>, item: &mut (Vec<Arc<str>>, Option<Arc<Fixture>>)){
+    pub fn _build_menu(&self, ui: &mut egui::Ui, path: &mut Vec<Arc<str>>, item: &mut (Vec<Arc<str>>, Option<Fixture>)){
         self.add_contained_fixtures(ui,  path, item);
         let mut items = self.contained_paths.iter().collect::<Vec<_>>();
         items.sort_by_cached_key(|x|x.key().clone());
@@ -68,7 +68,7 @@ impl FixtureStore{
     }
 
     #[inline]
-    pub fn build_menu(&self, ui: &mut egui::Ui, item: &mut (Vec<Arc<str>>, Option<Arc<Fixture>>)){
+    pub fn build_menu(&self, ui: &mut egui::Ui, item: &mut (Vec<Arc<str>>, Option<Fixture>)){
         self._build_menu(ui, &mut Vec::new(), item)
     }
 }
@@ -99,7 +99,7 @@ create_arc!(
     STANDARD_LASER, "Standard Laser",
     LASER, "Laser"
 );
-const VRSL_MOVING_HEAD:fn(usize, usize)->Arc<Fixture> = |max_pan, max_tilt|Arc::new(Fixture {
+const VRSL_MOVING_HEAD:fn(usize, usize)->Fixture = |max_pan, max_tilt|Fixture {
     manufacturer: VRSL.clone(),
     model: STANDARD_MOVER_SPOTLIGHT.clone(),
     r#type: MOVING_HEAD.clone(),
@@ -133,8 +133,8 @@ const VRSL_MOVING_HEAD:fn(usize, usize)->Arc<Fixture> = |max_pan, max_tilt|Arc::
         ]))),
         Channel::new_simple(SimpleChannelAction::Speed),
     ]),
-});
-const VRSL_PAR_LIGHT:Lazy<Arc<Fixture>> = Lazy::new(||Arc::new(Fixture {
+};
+const VRSL_PAR_LIGHT:Lazy<Fixture> = Lazy::new(||Fixture {
     manufacturer: VRSL.clone(),
     model: Arc::from("Standard Par Light"),
     r#type: Arc::from("Color Changer"),
@@ -156,8 +156,8 @@ const VRSL_PAR_LIGHT:Lazy<Arc<Fixture>> = Lazy::new(||Arc::new(Fixture {
         Channel::new_simple(SimpleChannelAction::NoOp),
         Channel::new_simple(SimpleChannelAction::NoOp),
     ]),
-}));
-const VRSL_BAR_LIGHT:Lazy<Arc<Fixture>> = Lazy::new(||Arc::new(Fixture {
+});
+const VRSL_BAR_LIGHT:Lazy<Fixture> = Lazy::new(||Fixture {
     manufacturer: VRSL.clone(),
     model: Arc::from("Standard BarLight"),
     r#type: Arc::from("LED Bar (Pixels)"),
@@ -179,8 +179,8 @@ const VRSL_BAR_LIGHT:Lazy<Arc<Fixture>> = Lazy::new(||Arc::new(Fixture {
         Channel::new_simple(SimpleChannelAction::NoOp),
         Channel::new_simple(SimpleChannelAction::NoOp),
     ]),
-}));
-const VRSL_BLINDER:Lazy<Arc<Fixture>> = Lazy::new(||Arc::new(Fixture {
+});
+const VRSL_BLINDER:Lazy<Fixture> = Lazy::new(||Fixture {
     manufacturer: VRSL.clone(),
     model: Arc::from("Standard Blinder"),
     r#type: Arc::from("Strobe"),
@@ -202,8 +202,8 @@ const VRSL_BLINDER:Lazy<Arc<Fixture>> = Lazy::new(||Arc::new(Fixture {
         Channel::new_simple(SimpleChannelAction::NoOp),
         Channel::new_simple(SimpleChannelAction::NoOp),
     ]),
-}));
-const VRSL_LASER:fn(usize, usize)->Arc<Fixture> = |max_pan, max_tilt|Arc::new(Fixture {
+});
+const VRSL_LASER:fn(usize, usize)->Fixture = |max_pan, max_tilt|Fixture {
     manufacturer: VRSL.clone(),
     model: STANDARD_LASER.clone(),
     r#type: LASER.clone(),
@@ -222,7 +222,7 @@ const VRSL_LASER:fn(usize, usize)->Arc<Fixture> = |max_pan, max_tilt|Arc::new(Fi
         Channel::new_simple(SimpleChannelAction::NoOp), //todo: length
         Channel::new_simple(SimpleChannelAction::Speed),
     ]),
-});
+};
 //</editor-fold>
 
 const fn get_pan() -> [(usize, Lazy<Arc<str>, fn() -> Arc<str>>); 3] {

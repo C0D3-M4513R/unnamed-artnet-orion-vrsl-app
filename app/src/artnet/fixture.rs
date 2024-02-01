@@ -32,12 +32,12 @@ pub struct Device {
     pub name: Arc<str>,
     ///`self.start_id + self.fixture.channels.len()` should always be inside an u9.
     pub start_id: u16,
-    pub fixture: Arc<Fixture>,
+    pub fixture: Fixture,
     _mark: PhantomData<()>,
 }
 
 impl Device{
-    pub const fn new(name: Arc<str>, start_id: u16, fixture: Arc<Fixture>) -> Self {
+    pub const fn new(name: Arc<str>, start_id: u16, fixture: Fixture) -> Self {
         Device{
             name,
             start_id,
