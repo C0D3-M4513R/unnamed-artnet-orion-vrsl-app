@@ -1,13 +1,9 @@
-use std::marker::PhantomData;
 use std::sync::Arc;
 use serde_derive::{Deserialize, Serialize};
 use channel::Channel;
 
 pub mod channel;
 pub mod variables;
-
-pub const MAX_UNIVERSE_ID:u16 = 1<<15;
-pub const MAX_CHANNEL_ID:u16 = 1<<9;
 
 #[derive(Debug, Deserialize, Serialize, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Fixture{
@@ -72,26 +68,47 @@ impl Fixture {
     }
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Device {
     pub name: Arc<str>,
     ///`self.start_id + self.fixture.channels.len()` should always be inside an u9.
-    pub start_id: u16,
+    start_id: ux2::u9,
+    end_id: ux2::u9,
     pub fixture: Fixture,
-    _mark: PhantomData<()>,
+}
+
+#[derive(Debug, Copy, Clone, Deserialize, Serialize, Ord, PartialOrd, Eq, PartialEq, thiserror::Error)]
+pub enum ChannelError{
+    #[error("The id {0} is too high for a Channel. It can be at maximum 511.")]
+    ChannelIdTooHigh(u16)
 }
 
 impl Device{
-    pub const fn new(name: Arc<str>, start_id: u16, fixture: Fixture) -> Self {
-        Self{
+    pub fn new_u16(name: Arc<str>, start_id: u16, fixture: Fixture) -> Result<Self, ux2::TryFromIntError> {
+        let u9_start_id = ux2::u9::try_from(start_id)?;
+        Ok(Self{
+            name,
+            start_id: u9_start_id,
+            end_id: ux2::u9::try_from(start_id as usize + fixture.channels.len())?,
+            fixture,
+        })
+    }
+    pub fn new(name: Arc<str>, start_id: ux2::u9, fixture: Fixture) -> Result<Self, ux2::TryFromIntError> {
+        Ok(Self{
             name,
             start_id,
+            end_id: ux2::u9::try_from(<ux2::u9 as Into<usize>>::into(start_id) + fixture.channels.len())?,
             fixture,
-            _mark: PhantomData{},
-        }
+        })
     }
-    #[allow(clippy::cast_possible_truncation)]
-    pub fn end_channel(&self) -> u64 {
-        u64::from(self.start_id)+self.fixture.channels.len() as u64
+
+    #[inline]
+    pub const fn start_channel(&self) -> ux2::u9 {
+        self.start_id
+    }
+
+    #[inline]
+    pub const fn end_channel(&self) -> ux2::u9 {
+        self.end_id
     }
 }

@@ -12,7 +12,6 @@
     clippy::missing_assert_message,
     clippy::mem_forget,
     clippy::map_err_ignore,
-    clippy::indexing_slicing,
     clippy::fn_to_numeric_cast_any,
     clippy::float_cmp_const,
     clippy::float_arithmetic,
@@ -24,7 +23,8 @@
     clippy::deref_by_slicing,
     clippy::default_union_representation,
     clippy::allow_attributes,
-    clippy::allow_attributes_without_reason
+    clippy::allow_attributes_without_reason,
+    missing_debug_implementations,
 )]
 #![deny(clippy::expect_used)]
 #![warn(
@@ -36,9 +36,11 @@
     clippy::style,
     clippy::else_if_without_else,
     clippy::dbg_macro,
-    clippy::create_dir
+    clippy::create_dir,
+    clippy::indexing_slicing,
+    missing_copy_implementations
 )]
-#![allow(clippy::semicolon_if_nothing_returned)]
+#![allow(clippy::semicolon_if_nothing_returned, clippy::module_name_repetitions)]
 #![windows_subsystem = "windows"]
 
 use std::sync::OnceLock;
@@ -51,7 +53,6 @@ compile_error!("The features `simple_logger` and `tracing_subscriber` are not co
 
 mod app;
 mod artnet;
-mod u9;
 mod fixturestore;
 mod degree;
 

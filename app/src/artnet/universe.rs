@@ -2,30 +2,76 @@ use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
 use serde_derive::{Deserialize, Serialize};
-use crate::artnet::fixture::Device;
+use crate::artnet::fixture::{Device};
 
-#[derive(Default, Clone, Deserialize, Serialize)]
-pub struct Universe{
+#[derive(Debug, Default, Deserialize, Serialize)]
+struct UniverseChannelData<T>([[T;32];32]);
+impl<T> UniverseChannelData<T>{
+    #[allow(clippy::indexing_slicing)] //It can be proven, that this will NEVER panic
+    fn get(&self, index: ux2::u9) -> &T {
+        let index:u16 = index.into();
+        &self.0[((index/32)&0b11111) as usize][(index%32) as usize]
+    }
+    #[allow(clippy::indexing_slicing)] //It can be proven, that this will NEVER panic
+    fn get_mut(&mut self, index: ux2::u9) -> &mut T {
+        let index:u16 = index.into();
+        &mut self.0[((index/32)&0b11111) as usize][(index%32) as usize]
+    }
+}
+
+#[allow(missing_copy_implementations)] //reason="The struct is too big"
+#[derive(Debug, Default, Deserialize, Serialize)]
+pub struct UniverseChannels<T> {
     pub id: u16,
+    channels: UniverseChannelData<T>,
+}
+
+#[derive(Debug, Copy, Clone, Deserialize, Serialize, Ord, PartialOrd, Eq, PartialEq, thiserror::Error)]
+pub enum UniverseError{
+    #[error("The id {0} is too high for a universe. It can be at maximum 32767.")]
+    UniverseIdTooHigh(u16)
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct Universes<T> {
+    data: Vec<T>
+}
+
+impl<T:Default> Universes<T>{
+    fn ensure_size(&mut self, universe: ux2::u15){
+        self.data.resize_with(
+            ux2::u15::max(
+                universe,
+                ux2::u15::try_from(self.data.len())
+                    .unwrap_or(ux2::u15::MAX)
+            ).into(),
+            T::default
+        );
+    }
+    pub fn create_or_get_universe(&mut self, universe: ux2::u15) -> &mut T {
+        self.ensure_size(universe);
+        self.data.index_mut(<ux2::u15 as Into<usize>>::into(universe))
+    }
+}
+impl<T> Universes<T> {
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+    pub fn iter(&self) -> Iter<'_, T> {
+        self.data.iter()
+    }
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+        self.data.get_mut(index)
+    }
+}
+
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+pub struct UniverseDevices {
     devices: Vec<Device>,
     _marker: PhantomData<()>,
 }
 
-impl Index<u16> for Universe {
-    type Output = Device;
-
-    fn index(&self, index: u16) -> &Self::Output {
-        self.devices.index(index as usize)
-    }
-}
-
-impl IndexMut<u16> for Universe{
-    fn index_mut(&mut self, index: u16) -> &mut Self::Output {
-        self.devices.index_mut(index as usize)
-    }
-}
-
-impl<'a> core::iter::IntoIterator for &'a Universe {
+impl<'a> core::iter::IntoIterator for &'a UniverseDevices {
     type Item = &'a Device;
     type IntoIter = Iter<'a, Device>;
 
@@ -44,16 +90,12 @@ pub enum InsertError {
     ChannelAlreadyAssigned
 }
 
-impl Universe{
-    pub const fn new(id: u16, devices: Vec<Device>) -> Self {
+impl UniverseDevices {
+    pub const fn new(devices: Vec<Device>) -> Self {
         Self{
-            id,
             devices,
             _marker: PhantomData{}
         }
-    }
-    pub const fn new_default(id: u16) -> Self {
-        Self::new(id, Vec::new())
     }
 
     pub fn len(&self) -> usize {
@@ -72,35 +114,24 @@ impl Universe{
         self.devices.remove(index)
     }
     pub fn try_insert(&mut self, device: Device) -> Result<(), InsertError> {
-        if device.start_id >= 512{
-            return Err(InsertError::StartIdTooBig(device.start_id));
-        }
+        let start_channel = device.start_channel();
         let end_channel = device.end_channel();
-        if end_channel >= 512 {
-            return Err(InsertError::EndIdTooBig(end_channel));
-        }
-        let end_channel = {
-            #[allow(clippy::cast_possible_truncation)]
-            {
-                end_channel as u16
-            }
-        };
 
-        self.devices.sort_unstable_by_key(|device|device.start_id);
-        match self.devices.binary_search_by_key(&device.start_id, |other_dev|other_dev.start_id){
+        self.devices.sort_unstable_by_key(Device::start_channel);
+        match self.devices.binary_search_by_key(&start_channel, Device::start_channel){
             Ok(_) => Err(InsertError::ChannelAlreadyAssigned),
             Err(v) => {
                 //is there a previous element?
                 if v > 0{
                     let prev_dev = self.devices.index(v-1);
-                    if prev_dev.end_channel() >= u64::from(device.start_id) {
+                    if prev_dev.end_channel() >= start_channel {
                         return Err(InsertError::ChannelAlreadyAssigned);
                     }
                 }
                 //is there a next element?
                 if v+1 < self.devices.len() {
                     let next_dev = self.devices.index(v+1);
-                    if end_channel > next_dev.start_id {
+                    if end_channel > next_dev.start_channel() {
                         return Err(InsertError::ChannelAlreadyAssigned);
                     }
                 }

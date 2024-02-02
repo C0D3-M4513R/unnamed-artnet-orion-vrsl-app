@@ -37,6 +37,8 @@ artnet_protocol = "0.4"
 once_cell = "1"
 thiserror = "1"
 dashmap = { version = "5", features = ["serde", "rayon", "inline"] }
+ux2 = { path = "../ux2/ux2", features = ["serde", "16", "emath_0_25"] }
+#/*version = "0.8"*/
 
 [features]
 default = ["simple_logger"]

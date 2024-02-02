@@ -43,7 +43,7 @@ impl VariableChannelAction{
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash)]
 #[allow(clippy::enum_variant_names)]
 pub enum ResolvedVariableChannelAction{
     ///data is total range of this channel in degrees / self.1

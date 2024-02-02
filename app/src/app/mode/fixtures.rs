@@ -2,7 +2,7 @@ use std::ops::Add;
 use std::sync::Arc;
 use egui::{CentralPanel, Widget};
 use crate::app::{App, get_id, popup_creator};
-use crate::artnet::fixture::{Device, MAX_CHANNEL_ID, MAX_UNIVERSE_ID};
+use crate::artnet::fixture::{Device, Fixture};
 use crate::fixturestore::FIXTURE_STORE;
 
 impl<'a> App<'a>{
@@ -25,7 +25,7 @@ impl<'a> App<'a>{
                             for (dev_id, device) in devices.iter().enumerate(){
                                 ui.label(dev_id.to_string());
                                 ui.label(device.fixture.get_model().as_ref());
-                                ui.label(device.start_id.to_string());
+                                ui.label(device.start_channel().to_string());
                                 ui.label(device.end_channel().to_string());
                                 if ui.button("Remove").clicked() {
                                     remove_list.push((universe, dev_id));
@@ -54,7 +54,7 @@ impl<'a> App<'a>{
         let mut name = "";
         let mut universe = 1;
         let mut start_id = 0;
-        let mut universe_err = None;
+        let mut device_err = None;
         let mut device_insert_err = None;
         let mut opt_fixture = (Vec::<Arc<str>>::new(), None);
         let grid_id = get_id();
@@ -66,25 +66,26 @@ impl<'a> App<'a>{
                     ui.end_row();
 
                     ui.label("Universe: ");
-                    let ui_universe = {
-                        #[allow(clippy::range_minus_one)] //bad suggestion - would lead to compilation error
-                        {
-                            egui::DragValue::new(&mut universe)
-                                .clamp_range(0..=MAX_UNIVERSE_ID-1)
-                                .ui(ui)
-                        }
-                    };
 
+                    egui::DragValue::new(&mut universe)
+                        .clamp_range(0u16..=ux2::u15::MAX.into())
+                        .ui(ui);
                     ui.end_row();
 
                     ui.label("Start Channel: ");
+                    let max_channel =
+                        ux2::u9::checked_sub(
+                            ux2::u9::MAX,
+                            opt_fixture.1.as_ref().map_or(
+                                ux2::u9::MIN,
+                                |x:&Fixture| ux2::u9::try_from(
+                                    x.get_channels().len()
+                                ).unwrap_or(ux2::u9::MAX)
+                            )).unwrap_or(ux2::u9::MIN);
                     let ui_channel = {
-                        #[allow(clippy::range_minus_one)] //bad suggestion - would lead to compilation error
-                        {
-                            egui::DragValue::new(&mut start_id)
-                                .clamp_range(0..=MAX_CHANNEL_ID-1)
-                                .ui(ui)
-                        }
+                        egui::DragValue::new(&mut start_id)
+                            .clamp_range(0u16..=max_channel.into())
+                            .ui(ui)
                     };
                     ui.end_row();
 
@@ -106,24 +107,26 @@ impl<'a> App<'a>{
                     ui.horizontal(|ui|{
                         if let Some(fixture) = &opt_fixture.1 {
                             if ui.button("Add").clicked() {
-                                match app.data.create_or_get_universe(universe){
-                                    Err(err) => {
-                                        universe_err = Some(err);
-                                    }
-                                    Ok(universe)=>{
-                                        match universe.try_insert(Device::new(Arc::from(name), start_id, fixture.clone())){
-                                            Ok(()) => {}
+                                match Device::new_u16(Arc::from(name), start_id, fixture.clone()) {
+                                    Ok(device) => {
+                                        device_err = None;
+                                        let universe = app.data.create_or_get_universe(ux2::u15::new(universe));
+                                        match universe.try_insert(device){
+                                            Ok(()) => {
+                                                device_insert_err = None;
+                                            },
                                             Err(err) => {
                                                 device_insert_err = Some(err);
                                             }
                                         }
-                                    }
-                                }
+                                    },
+                                    Err(err) => device_err = Some(err),
+                                };
                             }
                         }
 
-                        if let Some(err) = universe_err{
-                            ui_universe.ctx.debug_painter().error(ui_universe.rect.left_bottom(), err);
+                        if let Some(err) = &device_err{
+                            ui_channel.ctx.debug_painter().error(ui_channel.rect.left_bottom(), err);
                         }
                         if let Some(err) = device_insert_err{
                             ui_channel.ctx.debug_painter().error(ui_channel.rect.left_bottom(), err);

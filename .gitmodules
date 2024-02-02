@@ -1,0 +1,3 @@
+[submodule "ux2"]
+	path = ux2
+	url = git@github.com:C0D3-M4513R/ux2.git

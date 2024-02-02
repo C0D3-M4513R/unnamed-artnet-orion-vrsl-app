@@ -7,7 +7,7 @@ use egui::mutex::RwLock;
 use serde_derive::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
 use common_data::CommonData;
-use crate::app::common_data::UniverseError;
+use crate::artnet::universe::{UniverseChannels, UniverseError, Universes};
 use crate::fixturestore::FixtureStore;
 
 mod common_data;
@@ -43,14 +43,15 @@ pub struct App<'a>{
     #[cfg(feature = "egui_tracing")]
     #[serde(skip)]
     collector:egui_tracing::EventCollector,
-    fixture_store: FixtureStore,
+    fixture_store: Arc<FixtureStore>,
     #[serde(skip)]
     project_file: Option<PathBuf>,
     mode: AppMode,
     ///Mode Channels:
     view_by_device: bool,
-    view_universe: u16,
+    view_universe: ux2::u15,
     view_universe_error: Option<UniverseError>,
+    channel_overrides: Universes<UniverseChannels<Option<u8>>>,
     /// Data that is shared with also shared with the artnet processing thread
     #[serde(skip)]
     ///invariant: common_data_mutex==common_data_copy
@@ -74,6 +75,7 @@ impl<'a> Debug for App<'a>{
              .field("view_by_device", &self.view_by_device)
              .field("view_universe", &self.view_universe)
              .field("view_universe_error", &self.view_universe_error)
+             .field("channel_overrides", &self.channel_overrides)
              .field("common_data", &"Arc<Mutex<CommmonData>>")
              .field("channel", &self.channel)
              .field("popups.len()", &self.popups.len())
@@ -87,12 +89,13 @@ impl<'a> Default for App<'a>{
             logs_visible: false,
             #[cfg(feature = "egui_tracing")]
             collector:egui_tracing::EventCollector::new(),
-            fixture_store: FixtureStore::default(),
+            fixture_store: Arc::new(FixtureStore::default()),
             project_file: None,
             mode: AppMode::default(),
             view_by_device: false,
-            view_universe: 1,
+            view_universe: ux2::u15::new(1),
             view_universe_error: None,
+            channel_overrides: Universes::default(),
             common_data_mutex: Arc::new(RwLock::new(CommonData::default())),
             common_data_copy: CommonData::default(),
             data: CommonData::default(),
