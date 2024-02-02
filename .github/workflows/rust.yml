@@ -51,7 +51,7 @@ jobs:
       with:
         nix_path: nixpkgs=channel:nixos-23.05
     - uses: DeterminateSystems/magic-nix-cache-action@v2
-    - run: nix build '.?submodules=1' --experimental-features 'nix-command flakes'
+    - run: nix build --experimental-features 'nix-command flakes'
     - run: nix-shell --run "echo OK"
   build:
     runs-on: ${{ matrix.os }}
@@ -81,8 +81,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        with:
-          submodules: true
 
       - name: Install Rust
         uses: moonrepo/setup-rust@v1
