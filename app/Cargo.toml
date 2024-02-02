@@ -9,7 +9,6 @@ publish = false
 [dependencies]
 #gui stuff
 rfd = {version = "0.13", optional = true}
-egui_tracing = { version = "0.2.1", optional = true }
 egui_node_graph = "0.4"
 egui_extras = "0.25"
 egui = "0.25"
@@ -22,8 +21,6 @@ eframe = { version = "0.25", default-features = false, features = [
 #Logging
 log = "0.4"
 simple_logger = { version = "4", optional = true }
-tracing-subscriber = { version = "0.3" , optional = true}
-tracing-core = { version = "0.1", optional = true }
 #Persistant data storage
 serde_derive = "1"
 serde = "1"
@@ -43,5 +40,3 @@ ux2 = { path = "../ux2/ux2", features = ["serde", "16", "emath_0_25"] }
 [features]
 default = ["simple_logger"]
 simple_logger = ["dep:simple_logger"]
-tracing_subscriber = ["dep:tracing-subscriber", "dep:tracing-core"]
-egui_tracing = ["dep:egui_tracing", "tracing_subscriber"]

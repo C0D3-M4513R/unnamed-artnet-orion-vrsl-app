@@ -1,4 +1,6 @@
-#![allow(dead_code)] //todo: re-check, once the major implementation of this app has been done.
+#![allow(dead_code)]
+
+//todo: re-check, once the major implementation of this app has been done.
 use std::io::SeekFrom;
 use std::path::Path;
 use std::sync::Arc;
@@ -6,13 +8,15 @@ use dashmap::DashMap;
 use eframe::{Storage, storage_dir};
 use ron::ser::PrettyConfig;
 use tokio::io::{AsyncSeekExt, AsyncWriteExt};
+use crate::app::popup::{handle_display_popup_arc, ArcPopupStore};
 use crate::get_runtime;
 
+#[derive(Default)]
 pub struct FileStore {
-    ron_filepath: Arc<Path>,
+    ron_filepath: Option<Arc<Path>>,
     kv: Arc<DashMap<String, String>>,
     dirty: bool,
-    last_save_join_handle: Option<tokio::task::JoinHandle<()>>,
+    last_save_join_handle: Option<tokio::task::JoinHandle<std::io::Result<()>>>,
 }
 
 impl Drop for FileStore {
@@ -32,37 +36,92 @@ impl FileStore {
     /// that the `ron_filepath` can be read from.
     /// If the `ron_filepath` cannot be read from,
     /// this storage will just take the default value
-    fn from_ron_filepath(ron_filepath: Arc<Path>) -> Option<Self> {
+    pub async fn from_ron_filepath(ron_filepath: Arc<Path>) -> (Option<std::io::Error>, Self) {
         log::debug!("Loading app state from {:?}…", ron_filepath);
-        Some(Self {
-            kv: read_ron(&ron_filepath)?,
-            ron_filepath,
+        let okv = match read_ron(&ron_filepath).await{
+            Err(err) => (Some(err), Arc::default()),
+            Ok(kv) => (None, kv),
+        };
+        (okv.0, Self {
+            kv: okv.1,
+            ron_filepath: Some(ron_filepath.clone()),
             dirty: false,
             last_save_join_handle: None,
         })
     }
 
+    pub async fn change_ron_file(&mut self, ron_filepath: Arc<Path>) -> std::io::Result<()> {
+        self.ron_filepath = Some(ron_filepath);
+        save_to_disk(self.ron_filepath.clone(), self.kv.clone()).await
+    }
+
     /// Find a good place to put the files that the OS likes.
-    pub fn from_app_id(app_id: &str) -> Option<Self> {
-        storage_dir(app_id).map_or_else(||{
-            log::warn!("Saving disabled: Failed to find path to data_dir.");
-            None
-        }, |data_dir|{
-            if let Err(err) = std::fs::create_dir_all(&data_dir) {
-                log::warn!(
+    pub async fn from_app_id(app_id: &str) -> Option<Self> {
+        match storage_dir(app_id){
+            None => {
+                log::warn!("Saving disabled: Failed to find path to data_dir.");
+                None
+            }
+            Some(data_dir) => {
+                if let Err(err) = tokio::fs::create_dir_all(&data_dir).await {
+                    log::warn!(
                     "Saving disabled: Failed to create app path at {:?}: {}",
                     data_dir,
                     err
                 );
-                None
-            } else {
-                Self::from_ron_filepath(Arc::from(data_dir.join("app.ron")))
+                    None
+                } else {
+                    Some(Self::from_ron_filepath(Arc::from(data_dir.join("app.ron"))).await.1)
+                }
             }
-        })
+        }
     }
+
     fn _set_string(&mut self, key: &str, value: String){
         self.kv.insert(key.to_owned(), value);
         self.dirty = true;
+    }
+    fn flush<'a>(&mut self, popups: Option<ArcPopupStore>) {
+        if self.dirty {
+            self.dirty = false;
+
+            let last_save_join_handle = self.last_save_join_handle.take();
+            let ron_filepath = self.ron_filepath.clone();
+            let kv = self.kv.clone();
+            self.last_save_join_handle = Some(tokio::spawn(async move {
+                match last_save_join_handle{
+                    None => {}
+                    // wait for previous save to complete.
+                    Some(v) => match v.await{
+                        Ok(Ok(())) => {}
+                        Ok(Err(err)) => {
+                            log::warn!("Error whilst saving to disk: {err}");
+                            if let Some(popups) = popups {
+                                handle_display_popup_arc(
+                                    &popups,
+                                    "There was an error saving this project.",
+                                    &err,
+                                    "Error Saving Project"
+                                )
+                            }
+
+                        }
+                        Err(err) => {
+                            log::warn!("Error whilst saving to disk: {err}");
+                            if let Some(popups) = popups {
+                                handle_display_popup_arc(
+                                    &popups,
+                                    "There was a severe error saving this project. \nSomething definitely went majorly wrong.",
+                                    &err,
+                                    "Error Saving Project"
+                                )
+                            }
+                        }
+                    }
+                }
+                save_to_disk(ron_filepath, kv).await
+            }));
+        }
     }
 }
 
@@ -83,31 +142,15 @@ impl Storage for FileStore {
     }
 
     fn flush(&mut self) {
-        if self.dirty {
-            self.dirty = false;
-
-            let last_save_join_handle = self.last_save_join_handle.take();
-            let ron_filepath = self.ron_filepath.clone();
-            let kv = self.kv.clone();
-            self.last_save_join_handle = Some(tokio::spawn(async move {
-                match last_save_join_handle{
-                    None => {}
-                    // wait for previous save to complete.
-                    Some(v) => match v.await{
-                        Ok(()) => {}
-                        Err(e) => {
-                            log::warn!("Error whilst saving to disk: {}", e);
-                        }
-                    }
-                }
-                save_to_disk(ron_filepath, kv).await
-            }));
-        }
+        self.flush(None)
     }
 }
 
-async fn save_to_disk(file_path: Arc<Path>, kv: Arc<DashMap<String, String>>) {
-
+async fn save_to_disk(file_path: Option<Arc<Path>>, kv: Arc<DashMap<String, String>>) -> std::io::Result<()> {
+    let file_path = match file_path {
+        None => return Err(std::io::Error::from(std::io::ErrorKind::NotFound)),
+        Some(file_path) => file_path,
+    };
     if let Some(parent_dir) = file_path.parent() {
         if !parent_dir.exists() {
             if let Err(err) = tokio::fs::create_dir_all(parent_dir).await {
@@ -123,46 +166,37 @@ async fn save_to_disk(file_path: Arc<Path>, kv: Arc<DashMap<String, String>>) {
                 Ok(out) => {
                     if let Err(err) = file.seek(SeekFrom::Start(0)).await {
                         log::warn!("Failed to seek to start of file: {}", err);
-                        return;
+                        return Err(err);
                     }
                     if let Err(err) = file.write_all(out.as_bytes()).await{
                         log::warn!("Failed to write file contents: {}", err);
-                        return;
+                        return Err(err);
                     }
                     if let Err(err) = file.flush().await{
                         log::warn!("Failed to flush file contents: {}", err);
-                        return;
+                        return Err(err);
                     }
 
-                    log::trace!("Persisted to {:?}", file_path)
+                    log::trace!("Persisted to {:?}", file_path);
+                    Ok(())
                 },
-                Err(err) => log::warn!("Failed to serialize app state: {}", err),
-            };
+                Err(err) => {
+                    log::warn!("Failed to serialize app state: {}", err);
+                    Err(std::io::Error::other(err))
+                },
+            }
         }
         Err(err) => {
             log::warn!("Failed to create file {file_path:?}: {err}");
+            Err(err)
         }
     }
 }
 
-fn read_ron<T>(ron_path: impl AsRef<Path>) -> Option<T>
+async fn read_ron<T>(ron_path: impl AsRef<Path>) -> std::io::Result<T>
     where
         T: serde::de::DeserializeOwned,
 {
-    match std::fs::File::open(ron_path) {
-        Ok(file) => {
-            let reader = std::io::BufReader::new(file);
-            match ron::de::from_reader(reader) {
-                Ok(value) => Some(value),
-                Err(err) => {
-                    log::warn!("Failed to parse RON: {}", err);
-                    None
-                }
-            }
-        }
-        Err(_err) => {
-            // File probably doesn't exist. That's fine.
-            None
-        }
-    }
+    ron::de::from_str(tokio::fs::read_to_string(ron_path).await?.as_str())
+        .map_err(|err| std::io::Error::other(err))
 }

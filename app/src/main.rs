@@ -68,34 +68,6 @@ fn get_runtime() -> &'static Runtime {
     })
 }
 
-#[cfg(feature = "tracing_subscriber")]
-fn init_logging(){
-    use tracing_subscriber::{
-        layer::SubscriberExt,
-        util::SubscriberInitExt
-    };
-    println!("Setting up tracing_subscriber logger.");
-    #[cfg(feature = "egui_tracing")]
-        let collector = egui_tracing::EventCollector::new();
-    let layered = tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer().pretty());
-    #[cfg(feature = "egui_tracing")]
-        let layered = {
-        layered.with(tracing_subscriber::filter::filter_fn(|event|{
-            if let Some(module) = event.module_path(){
-                let mut bool = *event.level() == tracing_core::Level::TRACE && (module.starts_with("egui") || module.starts_with("eframe"));
-                bool |= (*event.level() == tracing_core::Level::DEBUG || *event.level() == tracing_core::Level::TRACE) && module.starts_with("globset");
-                !bool
-            }else{
-                true
-            }
-        })).with(collector.clone())
-    };
-    layered.init();
-    #[cfg(not(debug_assertions))]
-    log::info!("You are running a release build. Some log statements were disabled.");
-}
-
 #[cfg(feature = "simple_logger")]
 fn init_logging() {
         println!("Setting up simple_logger.");
@@ -109,7 +81,7 @@ fn init_logging() {
             .expect("unable to initialize logger");
 }
 
-#[cfg(not(any(feature = "simple_logger", feature = "tracing_subscriber")))]
+#[cfg(not(any(feature = "simple_logger")))]
 fn init_logging() {
     println!("Not setting up any logger.");
 }
@@ -125,9 +97,6 @@ fn main() {
         APP_NAME,
         native_options,
         Box::new(|cc| {
-
-            #[cfg(feature = "egui_tracing")]
-            return Box::new(app::App::new_collector(collector, cc));
             #[cfg(not(feature = "egui_tracing"))]
             return Box::new(app::App::new(cc));
         }),

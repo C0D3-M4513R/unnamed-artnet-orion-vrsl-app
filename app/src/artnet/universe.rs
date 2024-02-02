@@ -4,25 +4,24 @@ use std::slice::Iter;
 use serde_derive::{Deserialize, Serialize};
 use crate::artnet::fixture::{Device};
 
-#[derive(Debug, Default, Deserialize, Serialize)]
-struct UniverseChannelData<T>([[T;32];32]);
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
+struct UniverseChannelData<T>([[T;32];16]);
 impl<T> UniverseChannelData<T>{
     #[allow(clippy::indexing_slicing)] //It can be proven, that this will NEVER panic
     fn get(&self, index: ux2::u9) -> &T {
         let index:u16 = index.into();
-        &self.0[((index/32)&0b11111) as usize][(index%32) as usize]
+        &self.0[((index/32)&0x0F) as usize][(index%32) as usize]
     }
     #[allow(clippy::indexing_slicing)] //It can be proven, that this will NEVER panic
     fn get_mut(&mut self, index: ux2::u9) -> &mut T {
         let index:u16 = index.into();
-        &mut self.0[((index/32)&0b11111) as usize][(index%32) as usize]
+        &mut self.0[((index/32)&0x0F) as usize][(index%32) as usize]
     }
 }
 
 #[allow(missing_copy_implementations)] //reason="The struct is too big"
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct UniverseChannels<T> {
-    pub id: u16,
     channels: UniverseChannelData<T>,
 }
 
@@ -32,7 +31,7 @@ pub enum UniverseError{
     UniverseIdTooHigh(u16)
 }
 
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct Universes<T> {
     data: Vec<T>
 }

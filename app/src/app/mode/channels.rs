@@ -1,8 +1,18 @@
 use egui::{CentralPanel, Widget};
-use crate::app::App;
+use serde_derive::{Deserialize, Serialize};
+use crate::app::{mode, OtherAppState, SerializableAppData, SubMenu};
+use crate::artnet::universe::UniverseError;
 
-impl<'a> App<'a> {
-    pub(in super::super) fn channels(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
+#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+pub(super) struct Channels{
+    ///Mode Channels:
+    view_by_device: bool,
+    view_universe: ux2::u15,
+    view_universe_error: Option<UniverseError>,
+}
+
+impl SubMenu for Channels{
+    fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame, serializable_app_data: &mut SerializableAppData, _: &mut OtherAppState, _: mode::AppMode) {
         CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui|{
                if ui.small_button(if self.view_by_device {"View By Channel"} else {"View By Device"}).clicked(){
@@ -24,7 +34,7 @@ impl<'a> App<'a> {
                 }
             });
 
-            let universe = self.data.create_or_get_universe(self.view_universe);
+            let universe = serializable_app_data.data.devices.create_or_get_universe(self.view_universe);
             ui.label("This section is under Construction!");
         });
     }

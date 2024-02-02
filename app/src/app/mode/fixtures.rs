@@ -1,56 +1,17 @@
 use std::ops::Add;
 use std::sync::Arc;
 use egui::{CentralPanel, Widget};
-use crate::app::{App, get_id, popup_creator};
+use serde_derive::{Deserialize, Serialize};
+use crate::app::{mode, OtherAppState, SerializableAppData, SubMenu};
+use crate::app::popup::{get_id, popup_creator};
 use crate::artnet::fixture::{Device, Fixture};
 use crate::fixturestore::FIXTURE_STORE;
 
-impl<'a> App<'a>{
-    pub(in super::super) fn fixtures(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
-        let mut remove_list = Vec::new();
-        CentralPanel::default().show(ctx, |ui| {
-            for (universe, devices) in self.data.device_iter().enumerate() {
-                if devices.is_empty() {continue;}
-                let universe_str =format!("Universe {universe}");
-                ui.collapsing(&universe_str, |ui|{
-                    egui::Grid::new("fixtures:".to_string().add(universe_str.as_str()))
-                        .num_columns(5)
-                        .show(ui, |ui|{
-                            ui.label("Device Id");
-                            ui.label("Fixture Name");
-                            ui.label("Start Channel");
-                            ui.label("End Channel");
-                            ui.label("Action");
-                            ui.end_row();
-                            for (dev_id, device) in devices.iter().enumerate(){
-                                ui.label(dev_id.to_string());
-                                ui.label(device.fixture.get_model().as_ref());
-                                ui.label(device.start_channel().to_string());
-                                ui.label(device.end_channel().to_string());
-                                if ui.button("Remove").clicked() {
-                                    remove_list.push((universe, dev_id));
-                                }
-                                //todo: add edit button
-                                ui.end_row();
-                            }
-                        });
-                });
-            }
-            if self.data.is_empty(){
-                ui.label("No Fixtures have been added in any Univserse. Please get started, by adding a Fixture.");
-            }
-            for (universe, device_id) in remove_list{
-                if let Some(devices) = self.data.get_mut(universe){
-                    devices.remove(device_id);
-                }
-            }
-            if ui.button("Add Fixture").clicked() {
-                self.open_add_fixture_ui()
-            }
-        });
-    }
+#[derive(Debug, Default, Copy, Clone, Deserialize, Serialize)]
+pub(super) struct Fixtures;
 
-    fn open_add_fixture_ui(&mut self) {
+impl Fixtures{
+    fn open_add_fixture_ui(other_app_state: &mut OtherAppState) {
         let mut name = "";
         let mut universe = 1;
         let mut start_id = 0;
@@ -58,7 +19,7 @@ impl<'a> App<'a>{
         let mut device_insert_err = None;
         let mut opt_fixture = (Vec::<Arc<str>>::new(), None);
         let grid_id = get_id();
-        self.popups.push_back(popup_creator("Add Fixture", move |app, ui|{
+        popup_creator(other_app_state.popups.clone(), "Add Fixture", move |app, ui|{
             egui::Grid::new(grid_id)
                 .show(ui, |ui|{
                     ui.label("Name: ");
@@ -110,7 +71,7 @@ impl<'a> App<'a>{
                                 match Device::new_u16(Arc::from(name), start_id, fixture.clone()) {
                                     Ok(device) => {
                                         device_err = None;
-                                        let universe = app.data.create_or_get_universe(ux2::u15::new(universe));
+                                        let universe = app.serializable_app_data.data.devices.create_or_get_universe(ux2::u15::new(universe));
                                         match universe.try_insert(device){
                                             Ok(()) => {
                                                 device_insert_err = None;
@@ -139,6 +100,52 @@ impl<'a> App<'a>{
                         }
                     });
                 });
-        }));
+        });
+    }
+}
+
+impl SubMenu for Fixtures{
+    fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame, serializable_app_data: &mut SerializableAppData, other_app_state: &mut OtherAppState, _: mode::AppMode) {
+        let mut remove_list = Vec::new();
+        CentralPanel::default().show(ctx, |ui| {
+            for (universe, devices) in serializable_app_data.data.devices.iter().enumerate() {
+                if devices.is_empty() {continue;}
+                let universe_str =format!("Universe {universe}");
+                ui.collapsing(&universe_str, |ui|{
+                    egui::Grid::new("fixtures:".to_string().add(universe_str.as_str()))
+                        .num_columns(5)
+                        .show(ui, |ui|{
+                            ui.label("Device Id");
+                            ui.label("Fixture Name");
+                            ui.label("Start Channel");
+                            ui.label("End Channel");
+                            ui.label("Action");
+                            ui.end_row();
+                            for (dev_id, device) in devices.iter().enumerate(){
+                                ui.label(dev_id.to_string());
+                                ui.label(device.fixture.get_model().as_ref());
+                                ui.label(device.start_channel().to_string());
+                                ui.label(device.end_channel().to_string());
+                                if ui.button("Remove").clicked() {
+                                    remove_list.push((universe, dev_id));
+                                }
+                                //todo: add edit button
+                                ui.end_row();
+                            }
+                        });
+                });
+            }
+            if serializable_app_data.data.devices.is_empty(){
+                ui.label("No Fixtures have been added in any Univserse. Please get started, by adding a Fixture.");
+            }
+            for (universe, device_id) in remove_list{
+                if let Some(devices) = serializable_app_data.data.devices.get_mut(universe){
+                    devices.remove(device_id);
+                }
+            }
+            if ui.button("Add Fixture").clicked() {
+                Fixtures::open_add_fixture_ui(other_app_state)
+            }
+        });
     }
 }
