@@ -51,7 +51,7 @@ jobs:
       with:
         nix_path: nixpkgs=channel:nixos-23.05
     - uses: DeterminateSystems/magic-nix-cache-action@v2
-    - run: nix-build
+    - run: nix build '.?submodules=1' --experimental-features 'nix-command flakes'
     - run: nix-shell --run "echo OK"
   build:
     runs-on: ${{ matrix.os }}
@@ -59,7 +59,6 @@ jobs:
       matrix:
         rust: [stable]
         target: [x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc, i686-pc-windows-msvc, x86_64-apple-darwin, aarch64-apple-darwin] #x86_64-unknown-linux-musl,
-        features: ["file_dialog"]
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
@@ -82,6 +81,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          submodules: true
 
       - name: Install Rust
         uses: moonrepo/setup-rust@v1
@@ -101,7 +102,7 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
       - name: Run build
-        run: cargo build --target ${{ matrix.target }} --release --features ${{ matrix.features }} --package dex_protect_osc_rs --bin dex_protect_osc_rs
+        run: cargo build --target ${{ matrix.target }} --release --package unnamed_artnet_club_orion_vrsl_app --bin unnamed_artnet_club_orion_vrsl_app
       - name: Upload build artifact
         uses: actions/upload-artifact@v3
         with:
