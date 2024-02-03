@@ -53,10 +53,6 @@
             pkgs.wrapGAppsHook
           ];
           runtimeDependencies = runtimeDependencies;
-          dontWrapGApps = true;
-          postFixup = ''
-            makeWrapperArgs+=("''${gappsWrapperArgs[@]}")
-          '';
           buildInputs = with pkgs; [
             pkgs.rust-bin.stable.latest.default
           ] ++ commonBuildInputs;
