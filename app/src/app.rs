@@ -85,7 +85,7 @@ impl Debug for OtherAppState {
             .field("project_file_dialog", &self.project_file_dialog)
             .field("common_data_mutex", &"...")
             .field("channel", &"...")
-            .field("popups.len()", &"...")
+            .field("popups", &"...")
             .finish()
     }
 }
@@ -122,6 +122,7 @@ impl App {
                             FileDialog::ProjectSaveNew => {
                                 let mut lock = self.other_app_state.file_store.write();
                                 //todo: this is not ideal.
+                                #[allow(clippy::single_match_else)] //idk. I prefer a match over an if here.
                                 match get_runtime().block_on(lock.change_ron_file(path.clone())){
                                     Err(err) => {
                                         log::warn!("Could not save to new location: {}. Not updating location.", &err);
@@ -148,6 +149,7 @@ impl App {
                             FileDialog::ProjectOpen => {
                                 //todo: this is not ideal
                                 let (err, fs) = get_runtime().block_on(FileStore::from_ron_filepath(path.clone()));
+                                #[allow(clippy::single_match_else)] //idk. I prefer a match over an if here.
                                 match err {
                                     Some(err) => {
                                         log::warn!("Could not read project at new location {:?}: {}. Refusing to load new project.", &path, &err);
@@ -202,16 +204,15 @@ impl App {
         // Note that you must enable the `persistence` feature for this to work.
 
         let mut popups = VecDeque::default();
-        let last_opened_file_opt = match match cc.storage {
-            None => {
-                popups.push_front(popup_creator_raw("No Persistance", move |_, ui| {
-                    ui.label("Unable to determine last opened project, due to no system app storage being given.");
-                    ui.label("You may still open a project manually.");
-                }));
-                None
-            }
-            Some(storage) => Some(eframe::get_value::<PathBuf>(storage, LAST_OPENED_FILE))
-        }{
+        let last_opened_file_opt = match cc.storage.map_or_else(|| {
+            popups.push_front(popup_creator_raw("No Persistance", move |_, ui| {
+                ui.label("Unable to determine last opened project, due to no system app storage being given.");
+                ui.label("You may still open a project manually.");
+            }));
+            None
+        }, |storage|
+            Some(eframe::get_value::<PathBuf>(storage, LAST_OPENED_FILE))
+        ){
             None => None,
             Some(None) => {
                 popups.push_front(popup_creator_raw("No last Opened Project?", move |_, ui| {

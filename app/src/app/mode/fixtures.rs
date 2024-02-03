@@ -11,7 +11,7 @@ use crate::fixturestore::FIXTURE_STORE;
 pub(super) struct Fixtures;
 
 impl Fixtures{
-    fn open_add_fixture_ui(other_app_state: &mut OtherAppState) {
+    fn open_add_fixture_ui(other_app_state: &OtherAppState) {
         let mut name = "";
         let mut universe = 1;
         let mut start_id = 0;
@@ -144,7 +144,7 @@ impl SubMenu for Fixtures{
                 }
             }
             if ui.button("Add Fixture").clicked() {
-                Fixtures::open_add_fixture_ui(other_app_state)
+                Self::open_add_fixture_ui(other_app_state)
             }
         });
     }

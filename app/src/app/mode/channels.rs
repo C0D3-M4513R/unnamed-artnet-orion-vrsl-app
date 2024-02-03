@@ -7,8 +7,7 @@ use crate::artnet::universe::UniverseError;
 pub(super) struct Channels{
     ///Mode Channels:
     view_by_device: bool,
-    view_universe: ux2::u15,
-    view_universe_error: Option<UniverseError>,
+    universe: ux2::u15,
 }
 
 impl SubMenu for Channels{
@@ -20,21 +19,12 @@ impl SubMenu for Channels{
                }
 
                 ui.label("Universe: ");
-                let ui_universe = {
-                    #[allow(clippy::range_minus_one)] //bad suggestion - would lead to compilation error
-                        {
-                        egui::DragValue::new(&mut self.view_universe)
-                            .clamp_range(0u16..=ux2::u15::MAX.into())
-                            .ui(ui)
-                    }
-                };
-
-                if let Some(err) = self.view_universe_error {
-                    ui_universe.ctx.debug_painter().error(ui_universe.rect.left_bottom(), err);
-                }
+                egui::DragValue::new(&mut self.universe)
+                    .clamp_range(0u16..=ux2::u15::MAX.into())
+                    .ui(ui)
             });
 
-            let universe = serializable_app_data.data.devices.create_or_get_universe(self.view_universe);
+            let _universe = serializable_app_data.data.devices.create_or_get_universe(self.universe);
             ui.label("This section is under Construction!");
         });
     }

@@ -172,10 +172,10 @@ async fn save_to_disk(file_path: Option<Arc<Path>>, kv: Arc<DashMap<String, Stri
     }
 }
 
-async fn read_ron<T>(ron_path: impl AsRef<Path>) -> std::io::Result<T>
+async fn read_ron<T>(ron_path: &Arc<Path>) -> std::io::Result<T>
     where
         T: serde::de::DeserializeOwned,
 {
     ron::de::from_str(tokio::fs::read_to_string(ron_path).await?.as_str())
-        .map_err(|err| std::io::Error::other(err))
+        .map_err(std::io::Error::other)
 }

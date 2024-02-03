@@ -46,7 +46,7 @@ impl SubMenu for SubScreens {
         match mode {
             AppMode::FixtureBuilder |
             AppMode::Functions
-                => todo::Todo::default().update(ctx, frame, serializable_app_data, other_app_state, mode),
+                => todo::Todo.update(ctx, frame, serializable_app_data, other_app_state, mode),
             AppMode::Fixtures => self.fixtures.update(ctx, frame, serializable_app_data, other_app_state, mode),
             AppMode::Channels => self.channels.update(ctx, frame, serializable_app_data, other_app_state, mode),
         }
