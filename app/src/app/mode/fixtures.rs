@@ -5,7 +5,6 @@ use serde_derive::{Deserialize, Serialize};
 use crate::app::{mode, OtherAppState, SerializableAppData, SubMenu};
 use crate::app::popup::{get_id, popup_creator};
 use crate::artnet::fixture::{Device, Fixture};
-use crate::fixturestore::FIXTURE_STORE;
 
 #[derive(Debug, Default, Copy, Clone, Deserialize, Serialize)]
 pub(super) struct Fixtures;
@@ -51,7 +50,7 @@ impl Fixtures{
                     ui.end_row();
 
                     ui.menu_button(format!("{} Fixture", if opt_fixture.0.is_empty() {"Set"} else {"Change"}), |ui|{
-                        FIXTURE_STORE.build_menu(ui, &mut opt_fixture);
+                        app.serializable_app_data.fixture_store.build_menu(ui, &mut opt_fixture);
                     });
                     let vec_unset = opt_fixture.0.is_empty();
                     if vec_unset {

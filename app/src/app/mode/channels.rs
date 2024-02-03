@@ -56,7 +56,6 @@ impl Channels {
         ui.horizontal(|ui|{
             egui::ScrollArea::new([true, false])
                 .show(ui, |ui|{
-                    debug_assert_eq!((ux2::u9::MAX+ux2::u9::new(2)).into_inner(), 514);
                     let mut layout = egui::Layout::default();
                     layout.main_dir = egui::Direction::TopDown;
                     layout.main_align = egui::Align::Center;
@@ -90,6 +89,8 @@ impl SubMenu for Channels{
                 ui.label("Universe: ");
                 egui::DragValue::new(&mut self.universe)
                     .clamp_range(0u16..=ux2::u15::MAX.into())
+                    .speed(0.1)
+                    .fixed_decimals(0)
                     .ui(ui)
             });
 

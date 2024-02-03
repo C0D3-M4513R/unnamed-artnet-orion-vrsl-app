@@ -63,7 +63,6 @@ impl Fixture {
         let mut path = Vec::with_capacity(2+self.extra_path.len());
         path.push(self.get_manufacturer().clone());
         path.extend_from_slice(self.extra_path.as_ref());
-        path.push(self.get_model().clone());
         path.into()
     }
 }

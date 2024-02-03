@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use dashmap::{DashMap, DashSet};
 use once_cell::sync::Lazy;
@@ -9,13 +10,13 @@ use crate::degree::deg_to_microarcseconds;
 
 #[derive(Debug, Default, Clone, Deserialize, Serialize)]
 pub struct FixtureStore{
-    fixtures: DashSet<Fixture>,
-    contained_paths: DashMap<Arc<str>, FixtureStore>,
+    fixtures: Vec<Fixture>,
+    contained_paths: HashMap<Arc<str>, FixtureStore>,
 }
 
 impl FixtureStore{
 
-    pub(crate) fn populate_fixture_store_defaults(&self){
+    pub(crate) fn populate_fixture_store_defaults(&mut self){
         for fixture in [&VRSL_PAR_LIGHT, &VRSL_BAR_LIGHT, &VRSL_BLINDER, &VRSL_MOVING_HEAD, &VRSL_LASER]{
             self.put_path(fixture.get_path().as_ref(), (*fixture).clone());
         }
@@ -24,7 +25,7 @@ impl FixtureStore{
     pub fn is_empty(&self) -> bool {
         self.fixtures.is_empty() && self.contained_paths.is_empty()
     }
-    fn get_path<R>(&self, path: &[Arc<str>], func: impl FnOnce(&Self)->R) -> R {
+    fn get_path<R>(&mut self, path: &[Arc<str>], func: impl FnOnce(&mut Self)->R) -> R {
         //I cannot solve this without taking a callback and doing it recursively.
         //When trying to not do this recursively or to not take a callback,
         // rust complains about temporary reference lifetimes.
@@ -34,22 +35,20 @@ impl FixtureStore{
                 self.contained_paths
                     .entry(first.clone())
                     .or_default()
-                    .value()
                     .get_path(tail, func)
             },
         }
     }
 
-    fn put_path(&self, path: &[Arc<str>], fixture: Fixture) {
-        self.get_path(path, |fs|fs.fixtures.insert(fixture));
+    fn put_path(&mut self, path: &[Arc<str>], fixture: Fixture) {
+        self.get_path(path, |fs|fs.fixtures.push(fixture));
     }
 
     #[allow(clippy::significant_drop_tightening, clippy::significant_drop_in_scrutinee)]//false positive for items
     fn add_contained_fixtures(&self, ui: &mut egui::Ui,path: &mut Vec<Arc<str>>, item: &mut (Vec<Arc<str>>, Option<Fixture>)) {
         let mut items = self.fixtures.iter().collect::<Vec<_>>();
-        items.sort_by_cached_key(|x|x.key().get_model().clone());
-        for i in items {
-            let key = i.key();
+        items.sort_by_cached_key(|x|x.get_model().clone());
+        for key in items {
             path.push(key.get_model().clone());
             if ui.selectable_label(
                 item.1.as_ref().is_some_and(|f|f==key),
@@ -64,11 +63,9 @@ impl FixtureStore{
     pub fn _build_menu(&self, ui: &mut egui::Ui, path: &mut Vec<Arc<str>>, item: &mut (Vec<Arc<str>>, Option<Fixture>)){
         self.add_contained_fixtures(ui,  path, item);
         let mut items = self.contained_paths.iter().collect::<Vec<_>>();
-        items.sort_by_cached_key(|x|x.key().clone());
-        for element in items{
-            let value = element.value();
+        items.sort_by_key(|x|x.0);
+        for (key, value) in items{
             if value.is_empty() {continue}
-            let key = element.key();
 
             path.push(key.clone());
             ui.menu_button(key.as_ref(), |ui|{
@@ -83,12 +80,6 @@ impl FixtureStore{
         self._build_menu(ui, &mut Vec::new(), item)
     }
 }
-
-
-pub static FIXTURE_STORE:Lazy<FixtureStore> = Lazy::new(||FixtureStore {
-    fixtures: DashSet::new(),
-    contained_paths: DashMap::new(),
-});
 
 //<editor-fold desc="Fixture definitions" defaultstate="collapsed">
 macro_rules! create_arc {

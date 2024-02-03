@@ -24,6 +24,8 @@ mod storage;
 mod popup;
 
 const LAST_OPENED_FILE: &str = "LAST_OPENED_FILE";
+const APP:&str = "app";
+const FIXTURE_STORE:&str = "fixture_store";
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct App{
@@ -67,9 +69,9 @@ pub struct OtherAppState{
 
 #[derive(Debug, Default, Deserialize, Serialize)]
 pub struct SerializableAppData{
-    pub(self) fixture_store: Arc<FixtureStore>,
+    pub(self) fixture_store: FixtureStore,
     /// Clone of the last data, that has been written into the `common_data_mutex`
-    pub(self) common_data_copy: CommonData,
+    common_data_copy: CommonData,
     /// Data that is edited in the gui thread, but has not been sent to the artnet thread
     pub(self) data: CommonData,
     _marker: PhantomData<()>, //not_exhaustive
@@ -235,7 +237,7 @@ impl App {
     pub fn with_file_store(file_store: FileStore, last_opened_file_opt: Option<Arc<Path>>, mut popups: popup::PopupStore) -> Self {
         let mut app:Option<Self> = None;
 
-        match file_store.get_string("app") {
+        match file_store.get_string(APP) {
             None => {
                 if last_opened_file_opt.is_some(){
                     handle_display_popup(

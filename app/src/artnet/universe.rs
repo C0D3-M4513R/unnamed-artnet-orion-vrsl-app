@@ -63,11 +63,9 @@ pub struct Universes<T> {
 impl<T:Default> Universes<T>{
     fn ensure_size(&mut self, universe: ux2::u15){
         self.data.resize_with(
-            ux2::u15::max(
-                universe.checked_add(ux2::u15::new(1))
-                    .unwrap_or(ux2::u15::MAX),
-                ux2::u15::try_from(self.data.len())
-                    .unwrap_or(ux2::u15::MAX)
+            u16::max(
+                (universe + ux2::u15::new(1)).into_inner(),
+                self.data.len() as u16
             ).into(),
             T::default
         );
