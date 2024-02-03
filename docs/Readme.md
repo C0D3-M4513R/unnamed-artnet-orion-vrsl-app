@@ -7,7 +7,7 @@ Todo List:
   - [ ] Make that also serve as a monitor. Changes in the Simple Channel (editor/viewer would take precedence).
 - [ ] Make ArtNet work
 - [x] Implement Project loading into something else than the default egui store
-- [ ] Implement Project saving into something else than the default egui store
+- [x] Implement Project saving into something else than the default egui store
 - [ ] Figure out how to do/represent functions/scenes/chasers etc. in a blender-like nodegraph
 - [ ] Make a working Fixture Builder
   - [ ] Allow Saving custom fixtures into the fixture store

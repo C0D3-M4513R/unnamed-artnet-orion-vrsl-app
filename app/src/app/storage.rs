@@ -1,11 +1,8 @@
-#![allow(dead_code)]
-
-//todo: re-check, once the major implementation of this app has been done.
 use std::io::SeekFrom;
 use std::path::Path;
 use std::sync::Arc;
 use dashmap::DashMap;
-use eframe::{Storage, storage_dir};
+use eframe::Storage;
 use ron::ser::PrettyConfig;
 use tokio::io::{AsyncSeekExt, AsyncWriteExt};
 use crate::app::popup::{handle_display_popup_arc, ArcPopupStore};
@@ -50,38 +47,21 @@ impl FileStore {
         })
     }
 
-    pub async fn change_ron_file(&mut self, ron_filepath: Arc<Path>) -> std::io::Result<()> {
-        self.ron_filepath = Some(ron_filepath);
-        save_to_disk(self.ron_filepath.clone(), self.kv.clone()).await
+    pub const fn get_file_path(&self) -> Option<&Arc<Path>>{
+        self.ron_filepath.as_ref()
     }
 
-    /// Find a good place to put the files that the OS likes.
-    pub async fn from_app_id(app_id: &str) -> Option<Self> {
-        match storage_dir(app_id){
-            None => {
-                log::warn!("Saving disabled: Failed to find path to data_dir.");
-                None
-            }
-            Some(data_dir) => {
-                if let Err(err) = tokio::fs::create_dir_all(&data_dir).await {
-                    log::warn!(
-                    "Saving disabled: Failed to create app path at {:?}: {}",
-                    data_dir,
-                    err
-                );
-                    None
-                } else {
-                    Some(Self::from_ron_filepath(Arc::from(data_dir.join("app.ron"))).await.1)
-                }
-            }
-        }
+    pub async fn change_ron_file(&mut self, ron_filepath: Arc<Path>) -> std::io::Result<()> {
+        save_to_disk(self.ron_filepath.clone(), self.kv.clone()).await?;
+        self.ron_filepath = Some(ron_filepath);
+        Ok(())
     }
 
     fn _set_string(&mut self, key: &str, value: String){
         self.kv.insert(key.to_owned(), value);
         self.dirty = true;
     }
-    fn flush<'a>(&mut self, popups: Option<ArcPopupStore>) {
+    pub(super) fn flush(&mut self, popups: Option<ArcPopupStore>) {
         if self.dirty {
             self.dirty = false;
 
@@ -104,7 +84,6 @@ impl FileStore {
                                     "Error Saving Project"
                                 )
                             }
-
                         }
                         Err(err) => {
                             log::warn!("Error whilst saving to disk: {err}");

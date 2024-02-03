@@ -43,6 +43,8 @@
           buildInputs = with pkgs; [
             pkgs.rust-bin.stable.latest.default
             xorg.libxcb
+            gtk3.dev
+            pkg-config
           ];
           postInstall = ''
             wrapProgram "$out/bin/$pname" --prefix LD_LIBRARY_PATH : "${libPath}"
@@ -65,6 +67,8 @@
             tokei
 
             xorg.libxcb
+            gtk3.dev
+            pkg-config
           ];
           RUST_SRC_PATH = rustPlatform.rustLibSrc;
           LD_LIBRARY_PATH = libPath;
