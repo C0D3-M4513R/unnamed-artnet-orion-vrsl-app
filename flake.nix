@@ -22,7 +22,12 @@
             rustc = pkgs.rust-bin.stable.latest.default;
         };
         manifest = (builtins.fromTOML (builtins.readFile ./app/Cargo.toml)).package;
-        libPath = with pkgs; lib.makeLibraryPath [
+        commonBuildInputs = with pkgs; [
+          gsettings-desktop-schemas #https://nixos.org/manual/nixpkgs/unstable/#ssec-gnome-common-issues
+          xorg.libxcb
+          gtk3.dev
+          pkg-config
+
           libGL
           libxkbcommon
           wayland
@@ -39,18 +44,17 @@
           src = pkgs.lib.cleanSource ./.;
           doCheck = true;
           pname = manifest.name;
-          nativeBuildInputs = [ pkgs.makeWrapper ];
+          nativeBuildInputs = [
+            pkgs.autoPatchelfHook
+            pkgs.wrapGAppsHook
+          ];
+          dontWrapGApps = true;
+          postFixup = ''
+            makeWrapperArgs+=("''${gappsWrapperArgs[@]}")
+          '';
           buildInputs = with pkgs; [
             pkgs.rust-bin.stable.latest.default
-            gsettings-desktop-schemas #https://nixos.org/manual/nixpkgs/unstable/#ssec-gnome-common-issues
-
-            xorg.libxcb
-            gtk3.dev
-            pkg-config
-          ];
-          postInstall = ''
-            wrapProgram "$out/bin/$pname" --prefix LD_LIBRARY_PATH : "${libPath}"
-          '';
+          ] ++ commonBuildInputs;
         };
 
         defaultApp = utils.lib.mkApp {
@@ -67,12 +71,7 @@
             #rustc
             #rustfmt
             tokei
-
-            gsettings-desktop-schemas #https://nixos.org/manual/nixpkgs/unstable/#ssec-gnome-common-issues
-            xorg.libxcb
-            gtk3.dev
-            pkg-config
-          ];
+          ] ++ commonBuildInputs;
           RUST_SRC_PATH = rustPlatform.rustLibSrc;
           LD_LIBRARY_PATH = libPath;
           GIT_EXTERNAL_DIFF = "${difftastic}/bin/difft";
