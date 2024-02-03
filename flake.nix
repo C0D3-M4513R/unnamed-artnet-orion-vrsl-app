@@ -38,6 +38,10 @@
           xorg.libxcb
           fontconfig
         ];
+        runtimeDependencies = with pkgs; [
+          libGL
+          libxkbcommon
+        ];
       in
       {
         defaultPackage = naersk-lib.buildPackage {
@@ -48,6 +52,7 @@
             pkgs.autoPatchelfHook
             pkgs.wrapGAppsHook
           ];
+          runtimeDependencies = runtimeDependencies;
           dontWrapGApps = true;
           postFixup = ''
             makeWrapperArgs+=("''${gappsWrapperArgs[@]}")
@@ -73,7 +78,7 @@
             tokei
           ] ++ commonBuildInputs;
           RUST_SRC_PATH = rustPlatform.rustLibSrc;
-          LD_LIBRARY_PATH = libPath;
+          LD_LIBRARY_PATH = lib.makeLibraryPath commonBuildInputs;
           GIT_EXTERNAL_DIFF = "${difftastic}/bin/difft";
         };
       });
