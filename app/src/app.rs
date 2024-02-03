@@ -366,6 +366,10 @@ impl eframe::App for App {
                            )
                        );
                    }
+
+                   if ui.button("Reset").clicked(){
+                       *self = Self::with_file_store(FileStore::default(), None, VecDeque::new())
+                   }
                });
                SubScreens::menu_subscreen_select(ui, &mut self.mode);
                if ui.button("Apply Pending Changes").clicked() {
