@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
-use std::slice::Iter;
+use std::slice::{Iter, IterMut};
 use serde_derive::{Deserialize, Serialize};
 use crate::artnet::fixture::{Device};
 
@@ -17,12 +17,36 @@ impl<T> UniverseChannelData<T>{
         let index:u16 = index.into();
         &mut self.0[((index/32)&0x0F) as usize][(index%32) as usize]
     }
+
+    fn iter(&self) -> impl Iterator<Item = &T> {
+        self.0.iter()
+            .flat_map(|data|data.iter())
+    }
+    fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.0.iter_mut()
+            .flat_map(|data|data.iter_mut())
+    }
 }
 
 #[allow(missing_copy_implementations)] //reason="The struct is too big"
 #[derive(Debug, Clone, Default, Deserialize, Serialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct UniverseChannels<T> {
     channels: UniverseChannelData<T>,
+}
+impl<T> UniverseChannels<T> {
+    pub fn get(&self, index: ux2::u9) -> &T {
+        self.channels.get(index)
+    }
+    pub fn get_mut(&mut self, index: ux2::u9) -> &mut T {
+        self.channels.get_mut(index)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.channels.iter()
+    }
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.channels.iter_mut()
+    }
 }
 
 #[derive(Debug, Copy, Clone, Deserialize, Serialize, Ord, PartialOrd, Eq, PartialEq, thiserror::Error)]
@@ -40,7 +64,8 @@ impl<T:Default> Universes<T>{
     fn ensure_size(&mut self, universe: ux2::u15){
         self.data.resize_with(
             ux2::u15::max(
-                universe,
+                universe.checked_add(ux2::u15::new(1))
+                    .unwrap_or(ux2::u15::MAX),
                 ux2::u15::try_from(self.data.len())
                     .unwrap_or(ux2::u15::MAX)
             ).into(),
@@ -59,12 +84,15 @@ impl<T> Universes<T> {
     pub fn iter(&self) -> Iter<'_, T> {
         self.data.iter()
     }
+    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
+        self.data.iter_mut()
+    }
     pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         self.data.get_mut(index)
     }
 }
 
-#[derive(Debug, Default, Clone, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, Deserialize, Serialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct UniverseDevices {
     devices: Vec<Device>,
     _marker: PhantomData<()>,

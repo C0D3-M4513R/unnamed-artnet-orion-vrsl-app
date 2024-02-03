@@ -372,9 +372,11 @@ impl eframe::App for App {
                    }
                });
                SubScreens::menu_subscreen_select(ui, &mut self.mode);
-               if ui.button("Apply Pending Changes").clicked() {
-                   self.sync_changes();
-               }
+               ui.add_enabled_ui(self.serializable_app_data.data != self.serializable_app_data.common_data_copy, |ui|{
+                   if ui.button("Apply Pending Changes").clicked() {
+                       self.sync_changes();
+                   }
+               });
            });
         });
         self.sub_screens.update(ctx, frame, &mut self.serializable_app_data, &mut self.other_app_state, self.mode);

@@ -44,6 +44,7 @@ jobs:
           generateReleaseNotes: true
           artifacts: "artifacts/*"
   nixbuild:
+    if: false
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3

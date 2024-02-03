@@ -68,7 +68,7 @@ impl Fixture {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Device {
     pub name: Arc<str>,
     ///`self.start_id + self.fixture.channels.len()` should always be inside an u9.

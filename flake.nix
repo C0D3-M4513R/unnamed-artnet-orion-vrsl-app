@@ -42,6 +42,8 @@
           nativeBuildInputs = [ pkgs.makeWrapper ];
           buildInputs = with pkgs; [
             pkgs.rust-bin.stable.latest.default
+            gsettings-desktop-schemas #https://nixos.org/manual/nixpkgs/unstable/#ssec-gnome-common-issues
+
             xorg.libxcb
             gtk3.dev
             pkg-config
@@ -66,6 +68,7 @@
             #rustfmt
             tokei
 
+            gsettings-desktop-schemas #https://nixos.org/manual/nixpkgs/unstable/#ssec-gnome-common-issues
             xorg.libxcb
             gtk3.dev
             pkg-config

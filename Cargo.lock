@@ -2279,7 +2279,7 @@ dependencies = [
 [[package]]
 name = "ux2"
 version = "0.8.6"
-source = "git+https://github.com/C0D3-M4513R/ux2.git?rev=730c3b51d72a22e39825df6f7afbc788eff1aca1#730c3b51d72a22e39825df6f7afbc788eff1aca1"
+source = "git+https://github.com/C0D3-M4513R/ux2.git?rev=b509c62e581d5e4ee6afd4a78be5b234b63c580f#b509c62e581d5e4ee6afd4a78be5b234b63c580f"
 dependencies = [
  "emath",
  "serde",
@@ -2289,7 +2289,7 @@ dependencies = [
 [[package]]
 name = "ux2-macros"
 version = "0.10.0"
-source = "git+https://github.com/C0D3-M4513R/ux2.git?rev=730c3b51d72a22e39825df6f7afbc788eff1aca1#730c3b51d72a22e39825df6f7afbc788eff1aca1"
+source = "git+https://github.com/C0D3-M4513R/ux2.git?rev=b509c62e581d5e4ee6afd4a78be5b234b63c580f#b509c62e581d5e4ee6afd4a78be5b234b63c580f"
 dependencies = [
  "proc-macro2",
  "quote",
