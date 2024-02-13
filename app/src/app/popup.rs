@@ -39,6 +39,7 @@ pub(super) fn popup_creator_collapsible<'a>(
     let id = get_id();
     let mut open = true;
     Box::new(move |app:&'_ mut App,ctx: &'_ egui::Context, _: &'_ mut eframe::Frame| {
+        crate::profile_scope!("popup", id.to_string());
         egui::Window::new(title.clone())
             .resizable(false)
             .collapsible(collapsible)

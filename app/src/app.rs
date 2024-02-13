@@ -22,6 +22,7 @@ mod message;
 mod mode;
 mod storage;
 mod popup;
+mod debug;
 
 const LAST_OPENED_FILE: &str = "LAST_OPENED_FILE";
 const APP:&str = "app";
@@ -33,9 +34,7 @@ pub struct App{
     sub_screens: mode::SubScreens,
     /// Data that is shared with also shared with the artnet processing thread
     serializable_app_data: SerializableAppData,
-    #[cfg(feature = "puffin")]
-    #[serde(skip)]
-    debug: bool,
+    debug: debug::Debug,
     #[serde(skip)]
     other_app_state: OtherAppState,
 }
@@ -283,6 +282,7 @@ impl App {
     }
 
     fn display_popups(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame){
+        crate::profile_scope!("display_popups");
         let old_popup = core::mem::take(
             //Speed: there should never be a long lock on the popups. (only to push basically)
             &mut *get_runtime().block_on(
@@ -325,6 +325,7 @@ impl App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        self.debug.new_frame();
         self.check_app_save_new();
         TopBottomPanel::top("menu_bar:menu").show(ctx, |ui|{
            egui::menu::bar(ui, |ui|{
@@ -374,6 +375,17 @@ impl eframe::App for App {
                    }
                });
                SubScreens::menu_subscreen_select(ui, &mut self.mode);
+               #[cfg(feature = "puffin")]
+               {
+                   egui::menu::menu_button(ui, "Debugging", |ui|{
+                      let prev_debug = self.debug.debugging;
+                      ui.checkbox(&mut self.debug.debugging, "Profiler");
+                      if prev_debug != self.debug.debugging {
+                          puffin::set_scopes_on(self.debug.debugging);
+                      }
+                       ui.checkbox(&mut self.debug.debug_win_open, "View Profiler");
+                   });
+               }
                ui.add_enabled_ui(self.serializable_app_data.data != self.serializable_app_data.common_data_copy, |ui|{
                    if ui.button("Apply Pending Changes").clicked() {
                        self.sync_changes();
@@ -383,6 +395,12 @@ impl eframe::App for App {
         });
         self.sub_screens.update(ctx, frame, &mut self.serializable_app_data, &mut self.other_app_state, self.mode);
         self.display_popups(ctx, frame);
+        #[cfg(feature = "puffin")]
+        {
+            if self.debug.debug_win_open {
+                self.debug.debug_win_open = puffin_egui::profiler_window(ctx);
+            }
+        }
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {

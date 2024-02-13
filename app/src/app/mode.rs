@@ -5,6 +5,7 @@ use crate::app::{mode, OtherAppState, SerializableAppData, SubMenu};
 mod fixtures;
 mod todo;
 mod channels;
+mod settings;
 
 #[derive(Default, Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Deserialize, Serialize)]
 pub(super) enum AppMode{
@@ -13,6 +14,7 @@ pub(super) enum AppMode{
     Fixtures,
     Channels,
     Functions,
+    Settings
 }
 impl Display for AppMode{
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -21,6 +23,7 @@ impl Display for AppMode{
             Self::Fixtures => write!(f, "Fixtures"),
             Self::Channels => write!(f, "Channels"),
             Self::Functions => write!(f, "Functions"),
+            Self::Settings => write!(f, "Settings"),
         }
     }
 }
@@ -29,6 +32,7 @@ impl Display for AppMode{
 pub(super) struct SubScreens {
     fixtures: fixtures::Fixtures,
     channels: channels::Channels,
+    settings: settings::Settings,
 }
 
 impl SubScreens {
@@ -43,12 +47,14 @@ impl SubScreens {
 
 impl SubMenu for SubScreens {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame, serializable_app_data: &mut SerializableAppData, other_app_state: &mut OtherAppState, mode: mode::AppMode) {
+        crate::profile_scope!("submenu", mode.to_string());
         match mode {
             AppMode::FixtureBuilder |
             AppMode::Functions
                 => todo::Todo.update(ctx, frame, serializable_app_data, other_app_state, mode),
             AppMode::Fixtures => self.fixtures.update(ctx, frame, serializable_app_data, other_app_state, mode),
             AppMode::Channels => self.channels.update(ctx, frame, serializable_app_data, other_app_state, mode),
+            AppMode::Settings => self.settings.update(ctx, frame, serializable_app_data, other_app_state, mode),
         }
     }
 }

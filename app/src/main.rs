@@ -55,6 +55,8 @@ mod app;
 mod artnet;
 mod fixturestore;
 mod degree;
+mod r#macro;
+pub(crate) use r#macro::profile_scope;
 
 const APP_NAME: &str = "Unnamed ArtNet App for Club Orion/VRSL";
 static RUNTIME: OnceLock<Runtime> = OnceLock::new();

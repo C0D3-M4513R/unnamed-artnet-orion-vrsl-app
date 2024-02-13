@@ -40,7 +40,7 @@ ux2 = { version = "0.8.6", features = ["serde", "16", "emath_0_25"] }
 #/*version = "0.8"*/
 
 [features]
-default = ["simple_logger", "egui_log"]
+default = ["simple_logger"]
 simple_logger = ["dep:simple_logger"]
 deadlock_detection = ["egui/deadlock_detection"]
 puffin = ["egui/puffin", "egui_extras/puffin", "dep:puffin", "dep:puffin_egui"]

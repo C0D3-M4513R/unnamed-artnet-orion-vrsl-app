@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use dashmap::{DashMap, DashSet};
 use once_cell::sync::Lazy;
 use serde_derive::{Deserialize, Serialize};
 use crate::artnet::fixture::channel::{Channel, Action, Color, ColorRGB, Range, SimpleAction};
@@ -26,6 +25,10 @@ impl FixtureStore{
         self.fixtures.is_empty() && self.contained_paths.is_empty()
     }
     fn get_path<R>(&mut self, path: &[Arc<str>], func: impl FnOnce(&mut Self)->R) -> R {
+        crate::profile_scope!("functionstore::get_path", path.into_iter().flat_map(|a|a.chars()).collect::<String>());
+        self._get_path(path, func)
+    }
+    fn _get_path<R>(&mut self, path: &[Arc<str>], func: impl FnOnce(&mut Self)->R) -> R {
         //I cannot solve this without taking a callback and doing it recursively.
         //When trying to not do this recursively or to not take a callback,
         // rust complains about temporary reference lifetimes.
@@ -35,7 +38,7 @@ impl FixtureStore{
                 self.contained_paths
                     .entry(first.clone())
                     .or_default()
-                    .get_path(tail, func)
+                    ._get_path(tail, func)
             },
         }
     }
@@ -77,6 +80,7 @@ impl FixtureStore{
 
     #[inline]
     pub fn build_menu(&self, ui: &mut egui::Ui, item: &mut (Vec<Arc<str>>, Option<Fixture>)){
+        crate::profile_scope!("build_fixturestore_select");
         self._build_menu(ui, &mut Vec::new(), item)
     }
 }
