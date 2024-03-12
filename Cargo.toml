@@ -15,4 +15,4 @@ resolver = "2"
 [patch.crates-io]
 #egui_tracing = { git = "https://github.com/zakarumych/egui_tracing.git", rev = "87ff66d75a47c1d372806f7d1c5fd60d986ba06b"}
 egui_node_graph = { git = "https://github.com/C0D3-M4513R/egui_node_graph.git", rev = "829f6fdaf6e263f4ac3d36d84b666b512e9b5d0d"}
-ux2 = { git = "https://github.com/C0D3-M4513R/ux2.git", rev = "b509c62e581d5e4ee6afd4a78be5b234b63c580f"}
+ux2 = { git = "https://github.com/C0D3-M4513R/ux2.git", rev = "d170d2fbe0608fac7ea25ea2e5e234fced664c9d"}
